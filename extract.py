@@ -28,6 +28,8 @@ import zipfile
 import tarfile
 # pip install py7zr
 import py7zr
+import xml.etree.ElementTree as ET
+from bs4 import BeautifulSoup
 
 
 # ToDo: move to another file
@@ -71,14 +73,18 @@ def timestamp2time(timestamp):
     return time_str
 
 
-def word(file):
-    """extract text from .doc .docx based on docx module"""
+def word2text(file):
+    """
+    Extract text from .docx based on docx module.
+    .doc file should covert to .docx at first.
+    """
 
     doc = Document(file)
     paras = ''
     for p in doc.paragraphs:
         para = p.text
-        paras = paras + ' ' + para
+        paras = paras + para + ' '
+    paras = paras.replace("'", "‘")
 
     return paras
 
@@ -86,11 +92,11 @@ def word(file):
 # ToDo: 最后索引完，删除最后一个temp.docx
 # ToDo: SaveAs路径修改
 def doc2docx(file):
-    """convert .doc to .docx"""
+    """Convert .doc to .docx"""
 
     wordapp = wc.Dispatch("Word.Application")
     doc = wordapp.Documents.Open(file)
-    doc.SaveAs(r"d:\\textgps\\temp.docx", 12)
+    doc.SaveAs("d:\\textgps\\temp.docx", 12)
     doc.Close()
     wordapp.Quit()
 
@@ -99,47 +105,51 @@ def doc2docx(file):
 # ToDo: SaveAs路径修改
 # ToDo: 解决弹窗
 def ppt2pptx(file):
-    """convert .ppt to .pptx"""
+    """Convert .ppt to .pptx"""
 
     pptapp = wc.Dispatch("PowerPoint.Application")
     ppt = pptapp.Presentations.Open(file)
-    ppt.SaveAs(r"d:\\textgps\\temp.pptx")
+    ppt.SaveAs("d:\\textgps\\temp.pptx")
     ppt.Close()
     pptapp.Quit()
 
 
-def txt(file):
-    """extract text from .txt files excluding .csv"""
+def txt2text(file):
+    """
+    Extract text from .txt files excluding .csv.
+    It can also use as txt extractor for other formats(script, etc.).
+    """
 
     with open(file, 'r', encoding='utf-8') as f:
         text = f.read()
+        text = text.replace("'", "‘")
 
     return text
 
 
 # ToDo: 最后删除temp.txt文件
-def excel(file):
+def excel2text(file):
     """extract text from .xls/.xlsx files"""
 
     df = pd.read_excel(file, header=None)
     df.to_csv('temp.txt', header=None, sep=' ', index=False)
-    text = txt('temp.txt')
+    text = txt2text('temp.txt')
 
     return text
 
 
 # ToDo: 最后删除temp.txt文件
-def csv(file):
+def csv2text(file):
     """extract text from .csv files"""
 
     df = pd.read_csv(file, header=None)
     df.to_csv('temp.txt', header=None, sep=' ', index=False)
-    text = txt('temp.txt')
+    text = txt2text('temp.txt')
 
     return text
 
 
-def pptx(file):
+def pptx2text(file):
     """extract text from .pptx files"""
 
     shape_ts = []
@@ -150,13 +160,14 @@ def pptx(file):
                 t = shape.text
                 shape_ts.append(t)
     text = ' '.join(shape_ts)
+    text = text.replace("'", "‘")
 
     return text
 
 
 # ToDo: 最后删除temp.jpg文件
 # ToDo: ocr语言
-def scanpdf2txt(file, direction):
+def scanpdf2text(file, direction):
     """extract text from scanned pdf files by OCR using tesseract"""
 
     text = []
@@ -170,11 +181,12 @@ def scanpdf2txt(file, direction):
         t = pytesseract.image_to_string(Image.open(img_path), lang='chi_sim')
         text.append(t)
     texts = ' '.join(text)
+    texts = texts.replace("'", "‘")
 
     return texts
 
 
-def docpdf2txt(file):
+def docpdf2text(file):
     """extract text from doc pdf files"""
     
     with open(file, 'rb') as fp:
@@ -195,6 +207,7 @@ def docpdf2txt(file):
                 t = x.get_text()
                 text.append(t)
     texts = ' '.join(text)
+    texts = texts.replace("'", "‘")
 
     return texts
 
@@ -232,10 +245,36 @@ def un7z(file):
     sevenz_file.close()
 
 
-def uncompress2txt():
+def uncompress2text():
     zip_info = file_information('D:\\temp_zip\\')  # zip_info = list
     
     return zip_info
+
+
+def xml2text(path):
+    """extract text from .xml files"""
+
+    tree = ET.ElementTree(file=path)
+    root = tree.getroot()
+    text = []
+    for child in root.iter():
+        t = child.text
+        text.append(t)
+    texts = ' '.join(text)
+    texts = texts.replace("'", "‘")
+
+    return texts
+
+
+def html2text(file):
+    """extract text from .html files"""
+
+    with open(file, 'r', encoding='utf-8') as hf:
+        html = BeautifulSoup(hf, "html.parser")
+        text = html.body.get_text()
+        text = text.replace("'", "‘")
+    
+    return text
 
 
 # ToDo: Class(file_information)
@@ -248,13 +287,16 @@ def file_information(file_dir):
     word_old_format = ['.doc']  # .doc需转为.docx
     excel_format = ['.xlsx', '.xls']
     csv_format = ['.csv']
-    txt_format = ['.txt']
+    txt_format = ['.txt', '.md']  # .md忽略掉各种符号
     ppt_new_format = ['.pptx']
     ppt_old_format = ['.ppt']  # .ppt需转为.pptx
     pdf_format = ['.pdf']
     zip_format = ['.zip']
     sevenz_format = ['.7z']
     tar_format = ['.tar']
+    xml_format = ['.xml']
+    html_format = ['.html']
+    script_format = ['.py', '.cpp', '.r']  # 各种脚本，强制用文本格式读取
 
     for root, dirs, files in os.walk(file_dir):
         for f in files:
@@ -265,51 +307,51 @@ def file_information(file_dir):
             mtime = timestamp2time(os.path.getmtime(path))
             size = os.path.getsize(path) / float(1024 * 1024)  # Unit: Mb
             if extension in word_new_format:
-                paras = word(file=path)
+                paras = word2text(file=path)
                 info = {'Name': name, 'Extension': extension, 'CTime': ctime,
                         'MTime': mtime, 'Path': path, 'Size': size,
                         'Text': paras}
                 information.append(info)
             if extension in word_old_format:
                 doc2docx(path)
-                paras = word(r"d:\\textgps\\temp.docx")
+                paras = word2text(r"d:\\textgps\\temp.docx")
                 info = {'Name': name, 'Extension': extension, 'CTime': ctime,
                         'MTime': mtime, 'Path': path, 'Size': size,
                         'Text': paras}
                 information.append(info)
             if extension in txt_format:
-                text = txt(file=path)
+                text = txt2text(file=path)
                 info = {'Name': name, 'Extension': extension, 'CTime': ctime,
                         'MTime': mtime, 'Path': path, 'Size': size,
                         'Text': text}
                 information.append(info)
             if extension in excel_format:
-                text = excel(file=path)
+                text = excel2text(file=path)
                 info = {'Name': name, 'Extension': extension, 'CTime': ctime,
                         'MTime': mtime, 'Path': path, 'Size': size,
                         'Text': text}
                 information.append(info)
             if extension in csv_format:
-                text = csv(file=path)
+                text = csv2text(file=path)
                 info = {'Name': name, 'Extension': extension, 'CTime': ctime,
                         'MTime': mtime, 'Path': path, 'Size': size,
                         'Text': text}
                 information.append(info)
             if extension in ppt_new_format:
-                text = pptx(file=path)
+                text = pptx2text(file=path)
                 info = {'Name': name, 'Extension': extension, 'CTime': ctime,
                         'MTime': mtime, 'Path': path, 'Size': size,
                         'Text': text}
                 information.append(info)
             if extension in ppt_old_format:
                 ppt2pptx(path)
-                text = pptx(r"d:\\textgps\\temp.pptx")
+                text = pptx2text(r"d:\\textgps\\temp.pptx")
                 info = {'Name': name, 'Extension': extension, 'CTime': ctime,
                         'MTime': mtime, 'Path': path, 'Size': size,
                         'Text': text}
                 information.append(info)
             if extension in pdf_format:
-                text = docpdf2txt(path)
+                text = docpdf2text(path)
                 # 判定是doc还是scan pdf
                 if text != '':
                     info = {'Name': name, 'Extension': extension,
@@ -318,14 +360,14 @@ def file_information(file_dir):
                     information.append(info)
                 # ToDo: direction设为某个指定的隐藏临时文件夹，同其他
                 else:
-                    text = scanpdf2txt(path, direction='D:\\textgps\\')
+                    text = scanpdf2text(path, direction='D:\\textgps\\')
                     info = {'Name': name, 'Extension': extension,
                             'CTime': ctime, 'MTime': mtime, 'Path': path,
                             'Size': size, 'Text': text}
                     information.append(info)
             if extension in zip_format:
                 unzip(path)
-                zip_info = uncompress2txt()
+                zip_info = uncompress2text()
                 for i in zip_info:
                     i['Name'] = i['Name'] + i['Extension'] + ' (in) ' + name
                     i['Path'] = path
@@ -333,7 +375,7 @@ def file_information(file_dir):
                     information.append(i)
             if extension in tar_format:
                 untar(path)
-                tar_info = uncompress2txt()
+                tar_info = uncompress2text()
                 for i in tar_info:
                     i['Name'] = i['Name'] + i['Extension'] + ' (in) ' + name
                     i['Path'] = path
@@ -341,15 +383,33 @@ def file_information(file_dir):
                     information.append(i)
             if extension in sevenz_format:
                 un7z(path)
-                sevenz_info = uncompress2txt()
+                sevenz_info = uncompress2text()
                 for i in sevenz_info:
                     i['Name'] = i['Name'] + i['Extension'] + ' (in) ' + name
                     i['Path'] = path
                     i['Extension'] = '.7z'
                     information.append(i)
+            if extension in xml_format:
+                text = xml2text(path=path)
+                info = {'Name': name, 'Extension': extension,
+                        'CTime': ctime, 'MTime': mtime, 'Path': path,
+                        'Size': size, 'Text': text}
+                information.append(info)
+            if extension in html_format:
+                text = html2text(file=path)
+                info = {'Name': name, 'Extension': extension,
+                        'CTime': ctime, 'MTime': mtime, 'Path': path,
+                        'Size': size, 'Text': text}
+                information.append(info)
+            if extension in script_format:
+                text = txt2text(file=path)
+                info = {'Name': name, 'Extension': extension,
+                        'CTime': ctime, 'MTime': mtime, 'Path': path,
+                        'Size': size, 'Text': text}
+                information.append(info)
 
     return information
 
 
 create_db('test')
-data2db('d:\\textgps', 'test')
+data2db('d:\\text', 'test')
