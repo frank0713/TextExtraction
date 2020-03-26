@@ -33,6 +33,7 @@ from bs4 import BeautifulSoup
 import odf.opendocument as odfopen
 from odf import text as odftext
 from odf import teletype
+from tex2py import tex2py
 
 
 # ToDo: move to another file
@@ -310,6 +311,33 @@ def html2text(file):
     return text
 
 
+def odf2text(file):
+    """extract text from .odt/.ods/.odp files"""
+
+    odf_file = odfopen.load(file)
+    odf_text = odf_file.getElementsByType(odftext.P)
+    text = ''
+    for para in odf_text:
+        t = teletype.extractText(para)
+        text = text + t + ' '
+    
+    return text
+
+
+def tex2text(file):
+    """extract text from .tex(Latex) original files"""
+
+    with open(file, encoding='utf-8') as tf:
+        toc = tex2py(tf.read())
+    text = []
+    for i in toc.descendants:
+        if isinstance(i, str):
+            text.append(i)
+    text = ' '.join(text)
+
+    return text
+
+
 # ToDo: Class(file_information)
 def file_information(file_dir):
     """fetch info of customized format files under selected path: file_dir"""
@@ -321,7 +349,7 @@ def file_information(file_dir):
     word_marco_format = ['.docm']  # .docm需转为.docx
     excel_format = ['.xlsx', '.xls', '.xlsm']
     csv_format = ['.csv']
-    txt_format = ['.txt', '.md']  # .md忽略掉各种符号
+    txt_format = ['.txt', '.md', '.yml']  # .md忽略掉各种符号; .yml直接当文本
     ppt_new_format = ['.pptx']
     ppt_old_format = ['.ppt']  # .ppt需转为.pptx
     ppt_marco_format = ['.pptm']  # .pptm需转为.pptx
@@ -334,6 +362,7 @@ def file_information(file_dir):
     script_format = ['.py', '.cpp', '.r']  # 各种脚本，强制用文本格式读取
     odf_format = ['.odt', '.ods', '.odp']
     rtf_format = ['.rtf']  # .rtf需转为.docx
+    tex_format = ['.tex']
 
     for root, dirs, files in os.walk(file_dir):
         for f in files:
@@ -445,12 +474,7 @@ def file_information(file_dir):
                         'Size': size, 'Text': text}
                 information.append(info)
             if extension in odf_format:
-                odf_file = odfopen.load(path)
-                odf_text = odf_file.getElementsByType(odftext.P)
-                text = ''
-                for para in odf_text:
-                    t = teletype.extractText(para)
-                    text = text + t + ' '
+                text = odf2text(file=path)
                 info = {'Name': name, 'Extension': extension,
                         'CTime': ctime, 'MTime': mtime, 'Path': path,
                         'Size': size, 'Text': text}
@@ -475,6 +499,12 @@ def file_information(file_dir):
                 info = {'Name': name, 'Extension': extension, 'CTime': ctime,
                         'MTime': mtime, 'Path': path, 'Size': size,
                         'Text': paras}
+                information.append(info)
+            if extension in tex_format:
+                text = tex2text(file=path)
+                info = {'Name': name, 'Extension': extension, 'CTime': ctime,
+                        'MTime': mtime, 'Path': path, 'Size': size,
+                        'Text': text}
                 information.append(info)
 
     return information
