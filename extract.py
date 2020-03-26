@@ -30,6 +30,9 @@ import tarfile
 import py7zr
 import xml.etree.ElementTree as ET
 from bs4 import BeautifulSoup
+import odf.opendocument as odfopen
+from odf import text as odftext
+from odf import teletype
 
 
 # ToDo: move to another file
@@ -101,11 +104,41 @@ def doc2docx(file):
     wordapp.Quit()
 
 
+def docm2docx(file):
+    """Convert .docm to .docx"""
+
+    wordapp = wc.Dispatch("Word.Application")
+    doc = wordapp.Documents.Open(file)
+    doc.SaveAs("d:\\textgps\\temp.docx", 12)
+    doc.Close()
+    wordapp.Quit()
+
+
+def rtf2docx(file):
+    """Convert .rtf to .docx"""
+
+    wordapp = wc.Dispatch("Word.Application")
+    doc = wordapp.Documents.Open(file)
+    doc.SaveAs("d:\\textgps\\temp.docx", 12)
+    doc.Close()
+    wordapp.Quit()
+
+
 # ToDo: 最后索引完，删除最后一个temp.pptx
 # ToDo: SaveAs路径修改
 # ToDo: 解决弹窗
 def ppt2pptx(file):
     """Convert .ppt to .pptx"""
+
+    pptapp = wc.Dispatch("PowerPoint.Application")
+    ppt = pptapp.Presentations.Open(file)
+    ppt.SaveAs("d:\\textgps\\temp.pptx")
+    ppt.Close()
+    pptapp.Quit()
+
+
+def pptm2pptx(file):
+    """Convert .pptm to .pptx"""
 
     pptapp = wc.Dispatch("PowerPoint.Application")
     ppt = pptapp.Presentations.Open(file)
@@ -285,11 +318,13 @@ def file_information(file_dir):
     # ToDo: change to an optional model
     word_new_format = ['.docx']
     word_old_format = ['.doc']  # .doc需转为.docx
-    excel_format = ['.xlsx', '.xls']
+    word_marco_format = ['.docm']  # .docm需转为.docx
+    excel_format = ['.xlsx', '.xls', '.xlsm']
     csv_format = ['.csv']
     txt_format = ['.txt', '.md']  # .md忽略掉各种符号
     ppt_new_format = ['.pptx']
     ppt_old_format = ['.ppt']  # .ppt需转为.pptx
+    ppt_marco_format = ['.pptm']  # .pptm需转为.pptx
     pdf_format = ['.pdf']
     zip_format = ['.zip']
     sevenz_format = ['.7z']
@@ -297,6 +332,8 @@ def file_information(file_dir):
     xml_format = ['.xml']
     html_format = ['.html']
     script_format = ['.py', '.cpp', '.r']  # 各种脚本，强制用文本格式读取
+    odf_format = ['.odt', '.ods', '.odp']
+    rtf_format = ['.rtf']  # .rtf需转为.docx
 
     for root, dirs, files in os.walk(file_dir):
         for f in files:
@@ -406,6 +443,38 @@ def file_information(file_dir):
                 info = {'Name': name, 'Extension': extension,
                         'CTime': ctime, 'MTime': mtime, 'Path': path,
                         'Size': size, 'Text': text}
+                information.append(info)
+            if extension in odf_format:
+                odf_file = odfopen.load(path)
+                odf_text = odf_file.getElementsByType(odftext.P)
+                text = ''
+                for para in odf_text:
+                    t = teletype.extractText(para)
+                    text = text + t + ' '
+                info = {'Name': name, 'Extension': extension,
+                        'CTime': ctime, 'MTime': mtime, 'Path': path,
+                        'Size': size, 'Text': text}
+                information.append(info)
+            if extension in word_marco_format:
+                docm2docx(path)
+                paras = word2text("d:\\textgps\\temp.docx")
+                info = {'Name': name, 'Extension': extension, 'CTime': ctime,
+                        'MTime': mtime, 'Path': path, 'Size': size,
+                        'Text': paras}
+                information.append(info)
+            if extension in ppt_marco_format:
+                pptm2pptx(path)
+                text = pptx2text(r"d:\\textgps\\temp.pptx")
+                info = {'Name': name, 'Extension': extension, 'CTime': ctime,
+                        'MTime': mtime, 'Path': path, 'Size': size,
+                        'Text': text}
+                information.append(info)
+            if extension in rtf_format:
+                rtf2docx(path)
+                paras = word2text("d:\\textgps\\temp.docx")
+                info = {'Name': name, 'Extension': extension, 'CTime': ctime,
+                        'MTime': mtime, 'Path': path, 'Size': size,
+                        'Text': paras}
                 information.append(info)
 
     return information
