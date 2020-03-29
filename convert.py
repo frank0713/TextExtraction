@@ -16,7 +16,7 @@ def convert2docx(path):
     doc = wordapp.Documents.Open(path)
     # ToDo: 修改路径。另：初始化时创建
     directions = "C:\\temp_convert"
-    if os.path.exists(directions) == False:
+    if not os.path.exists(directions):
         os.makedirs(directions)
     convert_file = os.path.join(directions, "temp.docx")
     doc.SaveAs(convert_file, 12)
@@ -35,7 +35,7 @@ def convert2pptx(path):
     # ToDo: 修改路径。另：初始化时创建
     # ToDo: 修改路径。另：初始化时创建
     directions = "C:\\temp_convert"
-    if os.path.exists(directions) == False:
+    if not os.path.exists(directions):
         os.makedirs(directions)
     convert_file = os.path.join(directions, "temp.pptx")
     ppt.SaveAs(convert_file)

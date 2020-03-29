@@ -16,9 +16,9 @@ from pdfminer.pdfparser import PDFParser, PDFDocument
 from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
 from pdfminer.converter import PDFPageAggregator
 from pdfminer.layout import LTTextBoxHorizontal, LAParams
-import xml.etree.ElementTree as ET
+from xml.etree.ElementTree import ElementTree
 from bs4 import BeautifulSoup
-import odf.opendocument as odfopen
+from odf.opendocument import load as odfload
 from odf import text as odftext
 from odf import teletype
 from tex2py import tex2py
@@ -44,17 +44,16 @@ class TXTText:
         with open(self.path, 'r', encoding='utf-8') as f:
             text = f.read()
             text = text.replace("'", "‘")
-
         return text
 
     @staticmethod
     def ctxttext(file):
-        """Extract text from converted temporal .txt file for other methods."""
+        """Extract text from converted temporal .txt file for other inner class
+        methods."""
 
         with open(file, 'r', encoding='utf-8') as f:
             text = f.read()
             text = text.replace("'", "‘")
-
         return text
 
     def csvtext(self):
@@ -66,7 +65,6 @@ class TXTText:
         # ToDo: 修改创建dir。另：初始化时创建
         df.to_csv("C:\\temp\\temp.txt", header=None, sep=' ', index=False)
         text = self.ctxttext(file="C\\temp\\temp.txt")
-
         return text
 
     def exceltext(self):
@@ -79,7 +77,6 @@ class TXTText:
         # ToDo: 修改创建路径。另：初始化时创建
         df.to_csv("C:\\temp\\temp.txt", header=None, sep=' ', index=False)
         text = self.ctxttext(file="C:\\temp\\temp.txt")
-
         return text
     
     @staticmethod
@@ -100,7 +97,7 @@ class WordText:
 
     def __init__(self, path):
         self.path = path
-    
+
     def docxtext(self):
         """Extract text from .docx files."""
 
@@ -110,12 +107,12 @@ class WordText:
             para = p.text
             text = text + para + ' '
         text = text.replace("'", "‘")
-
         return text
 
     @staticmethod
     def cdocxtext(file):
-        """Extract text from converted temporal .docx file for other methods."""
+        """Extract text from converted temporal .docx file for other inner class
+        methods."""
 
         doc = Document(file)
         text = ''
@@ -123,7 +120,6 @@ class WordText:
             para = p.text
             text = text + para + ' '
         text = text.replace("'", "‘")
-
         return text
 
     def doctext(self):
@@ -132,7 +128,6 @@ class WordText:
 
         convert.convert2docx(self.path)
         text = self.cdocxtext("C\\temp\\temp.docx")
-
         return text
 
 
@@ -147,7 +142,7 @@ class PPTText:
 
     def __init__(self, path):
         self.path = path
-    
+
     def pptxtext(self):
         """Extract text from .pptx files."""
 
@@ -160,12 +155,12 @@ class PPTText:
                     shape_ts.append(t)
         text = ' '.join(shape_ts)
         text = text.replace("'", "‘")
-
         return text
 
     @staticmethod
     def cpptxtext(file):
-        """Extract text from converted temporal .pptx file for other methods."""
+        """Extract text from converted temporal .pptx file for other inner
+        class methods."""
 
         shape_ts = []
         ppt = Presentation(file)
@@ -176,7 +171,6 @@ class PPTText:
                     shape_ts.append(t)
         text = ' '.join(shape_ts)
         text = text.replace("'", "‘")
-
         return text
 
     def ppttext(self):
@@ -185,7 +179,6 @@ class PPTText:
 
         convert.convert2pptx(self.path)
         text = self.cpptxtext("C:\\temp\\temp.pptx")
-
         return text
 
 
@@ -196,18 +189,17 @@ class ODFText:
 
     def __init__(self, path):
         self.path = path
-    
+
     def odftext(self):
         """Extract text from .odt/.ods/.odp files"""
 
-        odf_file = odfopen.load(self.path)
+        odf_file = odfload(self.path)
         odf_text = odf_file.getElementsByType(odftext.P)
         text = ''
         for para in odf_text:
             t = teletype.extractText(para)
             text = text + t + ' '
         text = text.replace("'", "‘")
-
         return text
 
 
@@ -225,7 +217,7 @@ class MarkupText:
     def xmltext(self):
         """Extract text from .xml files."""
 
-        tree = ET.ElementTree(file=self.path)
+        tree = ElementTree(file=self.path)
         root = tree.getroot()
         texts = []
         for child in root.iter():
@@ -233,7 +225,6 @@ class MarkupText:
             texts.append(t)
         text = ' '.join(texts)
         text = text.replace("'", "‘")
-
         return text
 
     def htmltext(self):
@@ -243,7 +234,6 @@ class MarkupText:
             html = BeautifulSoup(hf, "html.parser")
             text = html.body.get_text()
             text = text.replace("'", "‘")
-        
         return text
     
     def textext(self):
@@ -257,7 +247,6 @@ class MarkupText:
                 text.append(i)
         text = ' '.join(text)
         text = text.replace("'", "‘")
-
         return text
     
 
@@ -266,12 +255,12 @@ class PDFText:
     Extract text from .pdf files.
 
     One type is document style, using pdfminer library to parser; the other is 
-    scanned, which is converted to image and extracted by OCR(tesseract). 
+    scanned type, which is converted to image and extracted by OCR(tesseract).
     """
 
     def __init__(self, path):
         self.path = path
-    
+
     def docpdftext(self):
         """Extract text from document type PDF."""
 
@@ -292,7 +281,6 @@ class PDFText:
                     texts.append(t)
         text = ' '.join(texts)
         text = text.replace("'", "‘")
-
         return text
     
     def scanpdftext(self):
@@ -300,7 +288,7 @@ class PDFText:
 
         # ToDo: 修改路径。另：初始化时创建
         directions = "C:\\temp_spdf"
-        if os.path.exists(directions) == False:
+        if not os.path.exists(directions):
             os.makedirs(directions)
         texts = []
         pages = convert_from_path(self.path, 500)
@@ -315,7 +303,6 @@ class PDFText:
             texts.append(t)
         text = ' '.join(texts)
         text = text.replace("'", "‘")
-
         return text
 
     @staticmethod
