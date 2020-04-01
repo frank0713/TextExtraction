@@ -32,7 +32,7 @@ def rewrite_early(index_dir, contents):
     early_file = os.path.join(index_dir, all_files[0])
     with open(early_file, "w") as ef:
         for i in contents:
-            ef.write(i)
+            ef.write(str(i))
             ef.write('\n')
 
 
@@ -59,80 +59,79 @@ def read_new(index_dir):
     return contents
 
 
-def get_uncompress_text(uncompress_path, user_extensions):
+def get_uncompress_text(user_extensions):
     """
     Extract the text and zipped files' name.
-    :param uncompress_path: A string. Directory - storing the temporal
-    uncompressed files.
+
     :param user_extensions: A list. User's selected formats for indexing. e.g.
     [".txt", ".xlsx"]
     :return: uncompress_info: A list, consists of dictionaries. For each
     dictionary, the Keys:'Name':file name with format; 'Text': extracted text.
     """
 
+    uncompress.recursive(user_extensions=user_extensions)
     uncompress_info = []
-    for root, dirs, files in os.walk(uncompress_path):
+    for root, dirs, files in os.walk("C:\\temp_zip"):
         for f in files:
             ext = os.path.splitext(f)[1]
-            if ext in user_extensions:
-                p = os.path.join(root, f)
-                name = f
-                # Extract text
-                if ext == '.txt' or ext == '.md' or ext == '.yml':
-                    text = extracttext.TXTText(p).txttext()
+            p = os.path.join(root, f)
+            name = f
+            # Extract text
+            if ext == '.txt' or ext == '.md' or ext == '.yml':
+                text = extracttext.TXTText(p).txttext()
+                info = {'Name': name, 'Text': text}
+                uncompress_info.append(info)
+            if ext == '.csv':
+                text = extracttext.TXTText(p).csvtext()
+                info = {'Name': name, 'Text': text}
+                uncompress_info.append(info)
+            if ext == '.xls' or ext == '.xlsx' or ext == '.xlsm':
+                text = extracttext.TXTText(p).exceltext()
+                info = {'Name': name, 'Text': text}
+                uncompress_info.append(info)
+            if ext == '.docx':
+                text = extracttext.WordText(p).docxtext()
+                info = {'Name': name, 'Text': text}
+                uncompress_info.append(info)
+            if ext == '.doc' or ext == '.docm' or ext == '.rtf':
+                text = extracttext.WordText(p).doctext()
+                info = {'Name': name, 'Text': text}
+                uncompress_info.append(info)
+            if ext == '.pptx':
+                text = extracttext.PPTText(p).pptxtext()
+                info = {'Name': name, 'Text': text}
+                uncompress_info.append(info)
+            if ext == '.ppt' or ext == '.pptm':
+                text = extracttext.PPTText(p).ppttext()
+                info = {'Name': name, 'Text': text}
+                uncompress_info.append(info)
+            if ext == '.odt' or ext == '.ods' or ext == '.odp':
+                text = extracttext.ODFText(p).odftext()
+                info = {'Name': name, 'Text': text}
+                uncompress_info.append(info)
+            if ext == '.xml':
+                text = extracttext.MarkupText(p).xmltext()
+                info = {'Name': name, 'Text': text}
+                uncompress_info.append(info)
+            if ext == '.html':
+                text = extracttext.MarkupText(p).htmltext()
+                info = {'Name': name, 'Text': text}
+                uncompress_info.append(info)
+            if ext == '.tex':
+                text = extracttext.MarkupText(p).textext()
+                info = {'Name': name, 'Text': text}
+                uncompress_info.append(info)
+            if ext == '.pdf':
+                text = extracttext.PDFText(p).docpdftext()
+                if text != '':
+                    text = text
                     info = {'Name': name, 'Text': text}
                     uncompress_info.append(info)
-                if ext == '.csv':
-                    text = extracttext.TXTText(p).csvtext()
+                else:
+                    text = extracttext.PDFText(p).scanpdftext()
                     info = {'Name': name, 'Text': text}
                     uncompress_info.append(info)
-                if ext == '.xls' or ext == '.xlsx' or ext == '.xlsm':
-                    text = extracttext.TXTText(p).exceltext()
-                    info = {'Name': name, 'Text': text}
-                    uncompress_info.append(info)
-                if ext == '.docx':
-                    text = extracttext.WordText(p).docxtext()
-                    info = {'Name': name, 'Text': text}
-                    uncompress_info.append(info)
-                if ext == '.doc' or ext == '.docm' or ext == '.rtf':
-                    text = extracttext.WordText(p).doctext()
-                    info = {'Name': name, 'Text': text}
-                    uncompress_info.append(info)
-                if ext == '.pptx':
-                    text = extracttext.PPTText(p).pptxtext()
-                    info = {'Name': name, 'Text': text}
-                    uncompress_info.append(info)
-                if ext == '.ppt' or ext == '.pptm':
-                    text = extracttext.PPTText(p).ppttext()
-                    info = {'Name': name, 'Text': text}
-                    uncompress_info.append(info)
-                if ext == '.odt' or ext == '.ods' or ext == '.odp':
-                    text = extracttext.ODFText(p).odftext()
-                    info = {'Name': name, 'Text': text}
-                    uncompress_info.append(info)
-                if ext == '.xml':
-                    text = extracttext.MarkupText(p).xmltext()
-                    info = {'Name': name, 'Text': text}
-                    uncompress_info.append(info)
-                if ext == '.html':
-                    text = extracttext.MarkupText(p).htmltext()
-                    info = {'Name': name, 'Text': text}
-                    uncompress_info.append(info)
-                if ext == '.tex':
-                    text = extracttext.MarkupText(p).textext()
-                    info = {'Name': name, 'Text': text}
-                    uncompress_info.append(info)
-                if ext == '.pdf':
-                    text = extracttext.PDFText(p).docpdftext()
-                    if text != '':
-                        text = text
-                        info = {'Name': name, 'Text': text}
-                        uncompress_info.append(info)
-                    else:
-                        text = extracttext.PDFText(p).scanpdftext()
-                        info = {'Name': name, 'Text': text}
-                        uncompress_info.append(info)
-    uncompress.rm_uncompressed_files()
+    uncompress.rm_unzip_files()
     return uncompress_info
 
 
@@ -189,7 +188,7 @@ def walk_file(user_dirs, user_extensions, index_name):
     # 轮换存三个扫描结果的文档，便于更新时对照。定期更新或手动更新索引，就覆写最早修改时间的
     directions = os.path.join("C:\\temp_index", str(index_name))
     # 覆写最早修改的一个文档
-    rewrite_early(index_dir=directions, contents=str(contents))
+    rewrite_early(index_dir=directions, contents=contents)
     return contents
 
 
@@ -208,10 +207,15 @@ def get_text(contents, user_extensions):
     """
 
     all_informations = contents
+    # ToDo: 文本过滤器
+    scripts = ['.py', '.r', '.cpp']
     for i in contents:
         ext = os.path.splitext(i['Path'])[-1]
         # Extract text
         if ext == '.txt' or ext == '.md' or ext == '.yml':
+            text = extracttext.TXTText(i['Path']).txttext()
+            i['Text'] = text
+        if ext in scripts:
             text = extracttext.TXTText(i['Path']).txttext()
             i['Text'] = text
         if ext == '.csv':
@@ -252,39 +256,11 @@ def get_text(contents, user_extensions):
             else:
                 text = extracttext.PDFText(i['Path']).scanpdftext()
                 i['Text'] = text
-        if ext == '.tar':
-            uncompress.untar(i['Path'])
-            untar_info = get_uncompress_text(
-                uncompress_path="C:\\temp_uncompress",
-                user_extensions=user_extensions
-            )
-            for ui in untar_info:
-                u_name = str(ui['Name']) + ' (in) ' + i['Name']
-                u_info = {'Name': u_name, 'Extension': i['Extension'],
-                          'Ctime': i['Ctime'], 'Mtime': i['Mtime'],
-                          'Path': i['Path'], 'Size': i['Size'],
-                          'Text': ui['Text']}
-                all_informations.append(u_info)
-        if ext == '.zip':
-            uncompress.unzip(i['Path'])
-            unzip_info = get_uncompress_text(
-                uncompress_path="C:\\temp_uncompress",
-                user_extensions=user_extensions
-            )
-            for ui in unzip_info:
-                u_name = str(ui['Name']) + ' (in) ' + i['Name']
-                u_info = {'Name': u_name, 'Extension': i['Extension'],
-                          'Ctime': i['Ctime'], 'Mtime': i['Mtime'],
-                          'Path': i['Path'], 'Size': i['Size'],
-                          'Text': ui['Text']}
-                all_informations.append(u_info)
-        if ext == '.7z':
-            uncompress.un7z(i['Path'])
-            un7z_info = get_uncompress_text(
-                uncompress_path="C:\\temp_uncompress",
-                user_extensions=user_extensions
-            )
-            for ui in un7z_info:
+        if ext == '.tar' or ext == '.rar' or ext == '.zip' or ext == '.7z':
+            uncompress.uncompress(file_path=i['Path'],
+                                  user_extensions=user_extensions)
+            uncompress_info = get_uncompress_text()
+            for ui in uncompress_info:
                 u_name = str(ui['Name']) + ' (in) ' + i['Name']
                 u_info = {'Name': u_name, 'Extension': i['Extension'],
                           'Ctime': i['Ctime'], 'Mtime': i['Mtime'],

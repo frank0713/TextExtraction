@@ -4,81 +4,68 @@
 
 
 import os
+import subprocess
 from shutil import rmtree
-import zipfile
-import tarfile
-import py7zr
-
-# ToDo: 改进：只临时解压所选格式的文档
-# ToDo: 改进：调用dll，支持解压所有格式
-# ToDo: unrar
 
 
-def unzip(path):
-    """Uncompress the .zip files into a temporal dir."""
-
-    # ToDo: 修改路径。另：可以在app初始化时统一执行makedirs
-    directions = "C:\\temp_uncompress"
-    if not os.path.exists(directions):
-        os.makedirs(directions)
-    zip_file = zipfile.ZipFile(path)
-    for f in zip_file.namelist():
-        ext = os.path.splitext(f)[-1]
-        if ext == '.zip':
-            unzip(os.path.join(directions, f))
-        if ext == '.tar':
-            untar(os.path.join(directions, f))
-        if ext == '.7z':
-            un7z(os.path.join(directions, f))
-        else:
-            zip_file.extract(f, directions)
-    zip_file.close()
+# 调用7z.exe
 
 
-def untar(path):
-    """Uncompress the .tar files into a temporal dir."""
+def initial():
+    """
+    Initialize the directory for storing the temporally uncompressed files.
+    """
 
-    directions = "C:\\temp_uncompress"
-    if not os.path.exists(directions):
-        os.makedirs(directions)
-    tar_file = tarfile.open(path)
-    for f in tar_file.getnames():
-        ext = os.path.splitext(f)[-1]
-        if ext == '.tar':
-            untar(os.path.join(directions, f))
-        if ext == '.zip':
-            unzip(os.path.join(directions, f))
-        if ext == '.7z':
-            un7z(os.path.join(directions, f))
-        else:
-            tar_file.extract(f, directions)
-    tar_file.close()
+    # ToDo: 修改路径
+    direction = "C:\\temp_zip"
+    if not os.path.exists(direction):
+        os.makedirs(direction)
 
 
-def un7z(path):
-    """Uncompress .7z files into a temporal dir."""
+def uncompress(file_path, user_extensions):
+    """
+    The core function to uncompress a file, using 7zip. It can only uncompress
+    the selected format files.
 
-    directions = "C:\\temp_uncompress"
-    if not os.path.exists(directions):
-        os.makedirs(directions)
-    sevenz_file = py7zr.SevenZipFile(path, mode='r')
-    non_7z = []
-    for f in sevenz_file.getnames():
-        ext = os.path.splitext(f)[-1]
-        if ext == '.7z':
-            un7z(os.path.join(directions, f))
-        if ext == '.zip':
-            unzip(os.path.join(directions, f))
-        if ext == '.tar':
-            untar(os.path.join(directions, f))
-        else:
-            non_7z.append(f)
-    sevenz_file.extract(path=directions, targets=non_7z)
-    sevenz_file.close()
+    :param file_path: A str. An absolute path.
+    :param user_extensions:  A list. User's selected formats for indexing. e.g.
+    [".txt", ".xlsx"]
+    """
+
+    # ToDo: 更改7z路径，设为安装路径
+    # ToDo: 有密码，跳出
+    sevenzip_path = "D:\\textgps\\7z.exe"
+    for ext in user_extensions:
+        subprocess.call([sevenzip_path, "x", file_path, "*", ext, "-y", "-r", "-oC:\\temp_zip"])
 
 
-def rm_uncompressed_files():
-    """Remove all the temporal uncompressed files at the end."""
+def recursive(user_extensions):
+    """
+    Uncompress the selected format files recursively. Set the loop less than 10
+    in-layer compressed.
 
-    uncompress_dirs = "C:\\temp_uncompress"
-    rmtree(uncompress_dirs)
+    :param user_extensions: A list. User's selected formats for indexing. e.g.
+    [".txt", ".xlsx"]
+    """
+
+    time = 1
+    while time < 10:
+        for f in os.listdir("C:\\temp_zip"):
+            ext = os.path.splitext(f)[-1]
+            f_path = os.path.join("C:\\temp_zip", f)
+            if ext not in ['.zip', '.tar', '.rar', '.7z']:
+                time += 1
+                continue
+            if ext in ['.zip', '.tar', '.rar', '.7z']:
+                uncompress(file_path=f_path, user_extensions=user_extensions)
+                os.remove(f_path)
+                time += 1
+                continue
+
+
+def rm_unzip_files():
+    """
+    Remove the temporal uncompressed files at the end.
+    """
+
+    rmtree("C:\\temp_zip")

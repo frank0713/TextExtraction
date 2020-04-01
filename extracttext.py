@@ -5,7 +5,7 @@
 # ToDo: 解编码问题
 
 import os
-import convert
+from win32com.client import Dispatch
 from docx import Document
 from pptx import Presentation
 import pandas as pd
@@ -63,8 +63,11 @@ class TXTText:
 
         df = pd.read_csv(self.path, header=None)
         # ToDo: 修改创建dir。另：初始化时创建
+        directions = "C:\\temp"
+        if not os.path.exists(directions):
+            os.makedirs(directions)
         df.to_csv("C:\\temp\\temp.txt", header=None, sep=' ', index=False)
-        text = self.ctxttext(file="C\\temp\\temp.txt")
+        text = self.ctxttext(file="C:\\temp\\temp.txt")
         return text
 
     def exceltext(self):
@@ -75,10 +78,13 @@ class TXTText:
 
         df = pd.read_excel(self.path, header=None)
         # ToDo: 修改创建路径。另：初始化时创建
+        directions = "C:\\temp"
+        if not os.path.exists(directions):
+            os.makedirs(directions)
         df.to_csv("C:\\temp\\temp.txt", header=None, sep=' ', index=False)
         text = self.ctxttext(file="C:\\temp\\temp.txt")
         return text
-    
+
     @staticmethod
     def rm_files():
         """Remove the temporal files at the end."""
@@ -88,11 +94,12 @@ class TXTText:
 
 class WordText:
     """
-    Extract text from .docx files.
+    Extract text from .docx/.doc/.docm/.rtf files.
 
-    For old version MS-Word files(.doc), macro-Word files(.docm), or rich text 
-    format files(.rtf), they should be converted into .docx format as first, 
-    using win32com module (convert2docx).
+    For .docx files, use docx library.
+
+    For old version MS-Word files(.doc), macro-Word files(.docm), or rich text
+    format files(.rtf), use win32com.client module.
     """
 
     def __init__(self, path):
@@ -109,35 +116,29 @@ class WordText:
         text = text.replace("'", "‘")
         return text
 
-    @staticmethod
-    def cdocxtext(file):
-        """Extract text from converted temporal .docx file for other inner class
-        methods."""
-
-        doc = Document(file)
-        text = ''
-        for p in doc.paragraphs:
-            para = p.text
-            text = text + para + ' '
-        text = text.replace("'", "‘")
-        return text
-
     def doctext(self):
-        """Extract text from .doc/.docm/.rtf files. They should be converted 
-        into .docx at first."""
+        """Extract text from .doc/.docm/.rtf files, using win32com.client."""
 
-        convert.convert2docx(self.path)
-        text = self.cdocxtext("C\\temp\\temp.docx")
+        wordapp = Dispatch("Word.Application")
+        wordapp.Visible = False
+        doc = wordapp.Documents.Open(self.path)
+        texts = []
+        for para in doc.paragraphs:
+            t = para.Range.Text
+            texts.append(t)
+        text = ' '.join(texts)
+        text = text.replace("'", "‘")
         return text
 
 
 class PPTText:
     """
-    Extract text from .pptx files.
+    Extract text from .pptx/.ppt/.pptm files.
+
+    For .pptx files, use pptx library.
 
     For old version MS-PowerPoint files(.ppt) or macro-PowerPoint files(.pptm), 
-    they should be converted into .pptx format as first, using win32com module
-    (convert2pptx).
+    use win32com.client module.
     """
 
     def __init__(self, path):
@@ -157,28 +158,21 @@ class PPTText:
         text = text.replace("'", "‘")
         return text
 
-    @staticmethod
-    def cpptxtext(file):
-        """Extract text from converted temporal .pptx file for other inner
-        class methods."""
-
-        shape_ts = []
-        ppt = Presentation(file)
-        for slide in ppt.slides:
-            for shape in slide.shapes:
-                if hasattr(shape, 'text'):
-                    t = shape.text
-                    shape_ts.append(t)
-        text = ' '.join(shape_ts)
-        text = text.replace("'", "‘")
-        return text
-
     def ppttext(self):
-        """Extract text from .ppt/.pptm files. They should be converted 
-        into .pptx at first."""
+        """Extract text from .ppt/.pptm files, using win32com.client module."""
 
-        convert.convert2pptx(self.path)
-        text = self.cpptxtext("C:\\temp\\temp.pptx")
+        pptapp = Dispatch("PowerPoint.Application")
+        ppt = pptapp.Presentations.Open(self.path, WithWindow=False)
+        texts = []
+        slide_count = ppt.Slides.Count
+        for i in range(1, slide_count + 1):
+            shape_count = ppt.Slides(i).Shapes.Count
+            for j in range(1, shape_count + 1):
+                if ppt.Slides(i).Shapes(j).HasTextFrame:
+                    t = ppt.Slides(i).Shapes(j).TextFrame.TextRange.Text
+                    texts.append(t)
+        text = ' '.join(texts)
+        text = text.replace("'", "‘")
         return text
 
 
@@ -292,14 +286,11 @@ class PDFText:
             os.makedirs(directions)
         texts = []
         pages = convert_from_path(self.path, 500)
-        image_counter = 1
         for p in pages:
-            fn = "temp.jpg"
+            fn = os.path.join(directions, "temp.jpg")
             p.save(fn, "JPEG")
-            image_counter += 1
-            img_path = os.path.join(directions, fn)
             # ToDo: 添加语言选择设置
-            t = pytesseract.image_to_string(Image.open(img_path), lang="chi_sim")
+            t = pytesseract.image_to_string(Image.open(fn), lang="chi_sim")
             texts.append(t)
         text = ' '.join(texts)
         text = text.replace("'", "‘")
@@ -311,6 +302,3 @@ class PDFText:
 
         for f in os.listdir("C:\\temp_spdf"):
             os.remove(f)
-
-
-# For uncompressed files, use recursive method to scan.
