@@ -6,6 +6,7 @@
 
 import os
 from win32com.client import Dispatch
+from win32com.client import DispatchEx
 from docx import Document
 from pptx import Presentation
 import pandas as pd
@@ -32,7 +33,7 @@ class TXTText:
     Markup language files(Markdown/Yaml); Code script files(C++/Python...etc.).
 
     MS-Excel associated files(.xls/.xlsx/.xlsm/.csv) convert into .txt format, 
-    using Pandas library, to extract.
+    using Pandas library, to be extracted.
     """
 
     def __init__(self, path):
@@ -63,9 +64,9 @@ class TXTText:
 
         df = pd.read_csv(self.path, header=None)
         # ToDo: 修改创建dir。另：初始化时创建
-        directions = "C:\\temp"
-        if not os.path.exists(directions):
-            os.makedirs(directions)
+        directory = "C:\\temp"
+        if not os.path.exists(directory):
+            os.makedirs(directory)
         df.to_csv("C:\\temp\\temp.txt", header=None, sep=' ', index=False)
         text = self.ctxttext(file="C:\\temp\\temp.txt")
         return text
@@ -78,16 +79,16 @@ class TXTText:
 
         df = pd.read_excel(self.path, header=None)
         # ToDo: 修改创建路径。另：初始化时创建
-        directions = "C:\\temp"
-        if not os.path.exists(directions):
-            os.makedirs(directions)
+        directory = "C:\\temp"
+        if not os.path.exists(directory):
+            os.makedirs(directory)
         df.to_csv("C:\\temp\\temp.txt", header=None, sep=' ', index=False)
         text = self.ctxttext(file="C:\\temp\\temp.txt")
         return text
 
     @staticmethod
-    def rm_files():
-        """Remove the temporal files at the end."""
+    def rm_txt_files():
+        """Remove the temporal .txt files at the end."""
 
         os.remove("C:\\temp\\temp.txt")
 
@@ -119,8 +120,7 @@ class WordText:
     def doctext(self):
         """Extract text from .doc/.docm/.rtf files, using win32com.client."""
 
-        wordapp = Dispatch("Word.Application")
-        wordapp.Visible = False
+        wordapp = DispatchEx("Word.Application")
         doc = wordapp.Documents.Open(self.path)
         texts = []
         for para in doc.paragraphs:
@@ -128,6 +128,8 @@ class WordText:
             texts.append(t)
         text = ' '.join(texts)
         text = text.replace("'", "‘")
+        doc.Close()
+        wordapp.Quit()
         return text
 
 
@@ -173,6 +175,8 @@ class PPTText:
                     texts.append(t)
         text = ' '.join(texts)
         text = text.replace("'", "‘")
+        ppt.Close()
+        pptapp.Quit()
         return text
 
 
@@ -281,13 +285,13 @@ class PDFText:
         """Extract text from scanned PDF by OCR(tesseract)."""
 
         # ToDo: 修改路径。另：初始化时创建
-        directions = "C:\\temp_spdf"
-        if not os.path.exists(directions):
-            os.makedirs(directions)
+        directory = "C:\\temp_spdf"
+        if not os.path.exists(directory):
+            os.makedirs(directory)
         texts = []
         pages = convert_from_path(self.path, 500)
         for p in pages:
-            fn = os.path.join(directions, "temp.jpg")
+            fn = os.path.join(directory, "temp.jpg")
             p.save(fn, "JPEG")
             # ToDo: 添加语言选择设置
             t = pytesseract.image_to_string(Image.open(fn), lang="chi_sim")

@@ -26,7 +26,7 @@ def create_db(index_name):
 def data2db(user_dirs, user_extensions, index_name):
     """
     Push the data into sqlite database.
-    :param user_dirs: A list. User's selected directions for scanning. e.g.
+    :param user_dirs: A list. User's selected directories for scanning. e.g.
     ["C:/text", "D:/Programs"]
     :param user_extensions: A list. User's selected formats for indexing. e.g.
     [".txt", ".xlsx"]

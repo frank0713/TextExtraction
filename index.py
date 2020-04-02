@@ -59,18 +59,17 @@ def read_new(index_dir):
     return contents
 
 
-def get_uncompress_text(user_extensions):
+def get_uncompress_text():
     """
     Extract the text and zipped files' name.
 
-    :param user_extensions: A list. User's selected formats for indexing. e.g.
-    [".txt", ".xlsx"]
     :return: uncompress_info: A list, consists of dictionaries. For each
     dictionary, the Keys:'Name':file name with format; 'Text': extracted text.
     """
 
-    uncompress.recursive(user_extensions=user_extensions)
     uncompress_info = []
+    # ToDo: 文本过滤器
+    scripts = ['.py', '.r', '.cpp']
     for root, dirs, files in os.walk("C:\\temp_zip"):
         for f in files:
             ext = os.path.splitext(f)[1]
@@ -78,6 +77,10 @@ def get_uncompress_text(user_extensions):
             name = f
             # Extract text
             if ext == '.txt' or ext == '.md' or ext == '.yml':
+                text = extracttext.TXTText(p).txttext()
+                info = {'Name': name, 'Text': text}
+                uncompress_info.append(info)
+            if ext in scripts:
                 text = extracttext.TXTText(p).txttext()
                 info = {'Name': name, 'Text': text}
                 uncompress_info.append(info)
@@ -131,7 +134,6 @@ def get_uncompress_text(user_extensions):
                     text = extracttext.PDFText(p).scanpdftext()
                     info = {'Name': name, 'Text': text}
                     uncompress_info.append(info)
-    uncompress.rm_unzip_files()
     return uncompress_info
 
 
@@ -144,12 +146,12 @@ def init_index(index_name):
 
     # ToDo: 修改路径。用户创建索引名时就创建。
     # 轮换存三个扫描结果的文档，便于更新时对照。定期更新或手动更新索引，就覆写最早修改时间的
-    directions = os.path.join("C:\\temp_index", str(index_name))
-    os.makedirs(directions)
+    directory = os.path.join("C:\\temp_index", str(index_name))
+    os.makedirs(directory)
     num = 1
     for i in range(3):
         index = index_name + str(num) + ".txt"
-        index_path = os.path.join(directions, index)
+        index_path = os.path.join(directory, index)
         with open(index_path, "w") as f:
             f.write("")
         num = num + 1
@@ -159,7 +161,7 @@ def walk_file(user_dirs, user_extensions, index_name):
     """
     Walk through the selected file_dirs and get the selected format
     files’info as a dictionary(Key:Value).
-    :param user_dirs: A list. User's selected directions for scanning. e.g.
+    :param user_dirs: A list. User's selected directories for scanning. e.g.
     ["C:/text", "D:/Programs"]
     :param user_extensions: A list. User's selected formats for indexing. e.g.
     [".txt", ".xlsx"]
@@ -186,15 +188,15 @@ def walk_file(user_dirs, user_extensions, index_name):
                             'Size': size, 'Text': ''}
                     contents.append(info)
     # 轮换存三个扫描结果的文档，便于更新时对照。定期更新或手动更新索引，就覆写最早修改时间的
-    directions = os.path.join("C:\\temp_index", str(index_name))
+    pathname = os.path.join("C:\\temp_index", str(index_name))
     # 覆写最早修改的一个文档
-    rewrite_early(index_dir=directions, contents=contents)
+    rewrite_early(index_dir=pathname, contents=contents)
     return contents
 
 
 def get_text(contents, user_extensions):
     """
-    Extract the text from selected directions and formats.
+    Extract the text from selected directories and formats.
     :param contents: A list, consists of dictionaries. Acturally, It is the
     result returned by Function walk_file().
     :param user_extensions: A list. User's selected formats for indexing. e.g.
@@ -206,7 +208,7 @@ def get_text(contents, user_extensions):
     original text should be changed to sign "‘".
     """
 
-    all_informations = contents
+    all_information = contents
     # ToDo: 文本过滤器
     scripts = ['.py', '.r', '.cpp']
     for i in contents:
@@ -221,9 +223,11 @@ def get_text(contents, user_extensions):
         if ext == '.csv':
             text = extracttext.TXTText(i['Path']).csvtext()
             i['Text'] = text
+            extracttext.TXTText.rm_txt_files()
         if ext == '.xls' or ext == '.xlsx' or ext == '.xlsm':
             text = extracttext.TXTText(i['Path']).exceltext()
             i['Text'] = text
+            extracttext.TXTText.rm_txt_files()
         if ext == '.docx':
             text = extracttext.WordText(i['Path']).docxtext()
             i['Text'] = text
@@ -256,24 +260,28 @@ def get_text(contents, user_extensions):
             else:
                 text = extracttext.PDFText(i['Path']).scanpdftext()
                 i['Text'] = text
+                extracttext.PDFText.rm_spdf()
         if ext == '.tar' or ext == '.rar' or ext == '.zip' or ext == '.7z':
-            uncompress.uncompress(file_path=i['Path'],
+            uncompress.uncompress(file_path=i['Path'], 
                                   user_extensions=user_extensions)
+            uncompress.recursive(user_extensions=user_extensions)
             uncompress_info = get_uncompress_text()
             for ui in uncompress_info:
                 u_name = str(ui['Name']) + ' (in) ' + i['Name']
+                u_path = '(' + i['Path'] + ')'
                 u_info = {'Name': u_name, 'Extension': i['Extension'],
                           'Ctime': i['Ctime'], 'Mtime': i['Mtime'],
-                          'Path': i['Path'], 'Size': i['Size'],
+                          'Path': u_path, 'Size': i['Size'],
                           'Text': ui['Text']}
-                all_informations.append(u_info)
-    return all_informations
+                all_information.append(u_info)
+            uncompress.rm_unzip_files()
+    return all_information
 
 
 def indexing(user_dirs, user_extensions, index_name):
     """
     The Main Function for indexing.
-    :param user_dirs: A list. User's selected directions for scanning. e.g.
+    :param user_dirs: A list. User's selected directories for scanning. e.g.
     ["C:/text", "D:/Programs"]
     :param user_extensions: A list. User's selected formats for indexing. e.g.
     [".txt", ".xlsx"]
@@ -285,8 +293,8 @@ def indexing(user_dirs, user_extensions, index_name):
     original text should be changed to sign "‘".
     """
 
-    directions = os.path.join("C:\\temp_index", index_name)
-    if not os.path.exists(directions):
+    directory = os.path.join("C:\\temp_index", index_name)
+    if not os.path.exists(directory):
         init_index(index_name)
     contents = walk_file(user_dirs, user_extensions, index_name)
     index_information = get_text(contents=contents,
@@ -299,8 +307,8 @@ def renew_index(user_dirs, user_extensions, index_name):
     Renew the index: renew the files' information; and based on the differences
     between new and old version files' information[returned result of Function
     walk_file()], remove the omitted ones, extract new texts, including added
-    files and modified files.
-    :param user_dirs: A list. User's selected directions for scanning. e.g.
+    files or modified files.
+    :param user_dirs: A list. User's selected directories for scanning. e.g.
     ["C:/text", "D:/Programs"]
     :param user_extensions: A list. User's selected formats for indexing. e.g.
     [".txt", ".xlsx"]
@@ -313,11 +321,19 @@ def renew_index(user_dirs, user_extensions, index_name):
     added to the current index.
     """
 
-    directions = os.path.join("C:\\temp_index" + index_name)
-    last_index = read_new(directions)
+    directory = os.path.join("C:\\temp_index" + index_name)
+    last_index = read_new(directory)
     newest_index = walk_file(user_dirs, user_extensions, index_name)
     # compare the differences
     adds = [x for x in newest_index if x not in last_index]
     removes = [y for y in last_index if y not in newest_index]
     add_information = get_text(contents=adds, user_extensions=user_extensions)
     return removes, add_information
+
+
+if __name__ == "__main__":
+    information = indexing(
+        user_dirs=["D:\\new_text"],
+        user_extensions=['.doc', '.docm'],
+        index_name="test")
+    print(information)

@@ -17,9 +17,9 @@ def initial():
     """
 
     # ToDo: 修改路径
-    direction = "C:\\temp_zip"
-    if not os.path.exists(direction):
-        os.makedirs(direction)
+    directory = "C:\\temp_zip"
+    if not os.path.exists(directory):
+        os.makedirs(directory)
 
 
 def uncompress(file_path, user_extensions):
@@ -27,40 +27,35 @@ def uncompress(file_path, user_extensions):
     The core function to uncompress a file, using 7zip. It can only uncompress
     the selected format files.
 
-    :param file_path: A str. An absolute path.
+    :param file_path: A string. An absolute path.
     :param user_extensions:  A list. User's selected formats for indexing. e.g.
     [".txt", ".xlsx"]
     """
 
     # ToDo: 更改7z路径，设为安装路径
     # ToDo: 有密码，跳出
-    sevenzip_path = "D:\\textgps\\7z.exe"
-    for ext in user_extensions:
-        subprocess.call([sevenzip_path, "x", file_path, "*", ext, "-y", "-r", "-oC:\\temp_zip"])
+    for suffix in user_extensions:
+        ext = "*" + suffix
+        # os.system("D:\\textgps\\7z.exe x " + file_path + " " + ext + " -oC:\\temp_zip")
+        subprocess.call(["D:\\textgps\\7z.exe", "x", file_path, ext, "-y", "-oC:\\temp_zip"])
 
 
 def recursive(user_extensions):
     """
-    Uncompress the selected format files recursively. Set the loop less than 10
-    in-layer compressed.
+    Uncompress the selected format files recursively. 
 
     :param user_extensions: A list. User's selected formats for indexing. e.g.
     [".txt", ".xlsx"]
     """
 
-    time = 1
-    while time < 10:
-        for f in os.listdir("C:\\temp_zip"):
-            ext = os.path.splitext(f)[-1]
-            f_path = os.path.join("C:\\temp_zip", f)
-            if ext not in ['.zip', '.tar', '.rar', '.7z']:
-                time += 1
-                continue
-            if ext in ['.zip', '.tar', '.rar', '.7z']:
-                uncompress(file_path=f_path, user_extensions=user_extensions)
-                os.remove(f_path)
-                time += 1
-                continue
+    zip_format = ['.tar', '.rar', '.zip', '.7z']
+    intersection = [x for x in zip_format if x in user_extensions]
+    for f in os.listdir("C:\\temp_zip"):
+        ext = os.path.splitext(f)[-1]
+        f_path = os.path.join("C:\\temp_zip", f)
+        if ext in intersection:
+            uncompress(file_path=f_path, user_extensions=user_extensions)
+            os.remove(f_path)
 
 
 def rm_unzip_files():
