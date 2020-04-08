@@ -5,11 +5,15 @@
 # ToDo: 解编码问题
 
 import os
+from chardet import detect
 from win32com.client import Dispatch
 from win32com.client import DispatchEx
 from docx import Document
+from docx.opc import exceptions
+from pptx import exc
 from pptx import Presentation
 import pandas as pd
+from xlrd.biffh import XLRDError
 from PIL import Image
 import pytesseract
 from pdf2image import convert_from_path
@@ -42,9 +46,14 @@ class TXTText:
     def txttext(self):
         """Extract text from general .txt files."""
 
-        with open(self.path, 'r', encoding='utf-8') as f:
-            text = f.read()
-            text = text.replace("'", "‘")
+        try:
+            with open(self.path, 'rb') as f:
+                unicode_text = f.read()
+                code = detect(unicode_text)['encoding']  # detect code type
+                text = unicode_text.decode(encoding=code)
+                text = text.replace("'", "‘")
+        except TypeError:
+            text = ''
         return text
 
     @staticmethod
@@ -52,9 +61,14 @@ class TXTText:
         """Extract text from converted temporal .txt file for other inner class
         methods."""
 
-        with open(file, 'r', encoding='utf-8') as f:
-            text = f.read()
-            text = text.replace("'", "‘")
+        try:
+            with open(file, 'rb') as f:
+                unicode_text = f.read()
+                code = detect(unicode_text)['encoding']  # detect code type
+                text = unicode_text.decode(encoding=code)
+                text = text.replace("'", "‘")
+        except TypeError:
+            text = ''
         return text
 
     def csvtext(self):
@@ -62,13 +76,16 @@ class TXTText:
         
         Use Pandas library to convert into .txt format."""
 
-        df = pd.read_csv(self.path, header=None)
-        # ToDo: 修改创建dir。另：初始化时创建
-        directory = "C:\\temp"
-        if not os.path.exists(directory):
-            os.makedirs(directory)
-        df.to_csv("C:\\temp\\temp.txt", header=None, sep=' ', index=False)
-        text = self.ctxttext(file="C:\\temp\\temp.txt")
+        try:
+            df = pd.read_csv(self.path, header=None)
+            # ToDo: 修改创建dir。另：初始化时创建
+            directory = "C:\\temp"
+            if not os.path.exists(directory):
+                os.makedirs(directory)
+            df.to_csv("C:\\temp\\temp.txt", header=None, sep=' ', index=False)
+            text = self.ctxttext(file="C:\\temp\\temp.txt")
+        except (pd.errors.EmptyDataError, UnicodeDecodeError):
+            text = ''
         return text
 
     def exceltext(self):
@@ -77,13 +94,16 @@ class TXTText:
         Use Pandas library to convert the MS-Excel associated format files
         (including old version[.xls] or macro[.xlsm] ones) into .txt format."""
 
-        df = pd.read_excel(self.path, header=None)
-        # ToDo: 修改创建路径。另：初始化时创建
-        directory = "C:\\temp"
-        if not os.path.exists(directory):
-            os.makedirs(directory)
-        df.to_csv("C:\\temp\\temp.txt", header=None, sep=' ', index=False)
-        text = self.ctxttext(file="C:\\temp\\temp.txt")
+        try:
+            df = pd.read_excel(self.path, header=None)
+            # ToDo: 修改创建路径。另：初始化时创建
+            directory = "C:\\temp"
+            if not os.path.exists(directory):
+                os.makedirs(directory)
+            df.to_csv("C:\\temp\\temp.txt", header=None, sep=' ', index=False)
+            text = self.ctxttext(file="C:\\temp\\temp.txt")
+        except XLRDError:
+            text = ''
         return text
 
     @staticmethod
@@ -109,12 +129,29 @@ class WordText:
     def docxtext(self):
         """Extract text from .docx files."""
 
-        doc = Document(self.path)
-        text = ''
-        for p in doc.paragraphs:
-            para = p.text
-            text = text + para + ' '
-        text = text.replace("'", "‘")
+        try:
+            doc = Document(self.path)
+        except exceptions.PackageNotFoundError:
+            text = ''
+        else:
+            # main body text
+            text = ''
+            for p in doc.paragraphs:
+                para = p.text
+                text = text + para + ' '
+            # table text
+            table_text = []
+            for table in doc.tables:
+                for row in range(0, len(table.rows)):
+                    r_t = []
+                    for column in range(0, len(table.columns)):
+                        t = table.cell(row, column).text
+                        r_t.append(t)
+                    r_t = ' '.join(r_t)
+                    table_text.append(r_t)
+            table_text = ' \n'.join(table_text)
+            text = text + table_text
+            text = text.replace("'", "‘")
         return text
 
     def doctext(self):
@@ -123,6 +160,7 @@ class WordText:
         wordapp = DispatchEx("Word.Application")
         doc = wordapp.Documents.Open(self.path)
         texts = []
+        # ToDo: 加密的不报错，raise一个来处理
         for para in doc.paragraphs:
             t = para.Range.Text
             texts.append(t)
@@ -149,13 +187,17 @@ class PPTText:
     def pptxtext(self):
         """Extract text from .pptx files."""
 
-        shape_ts = []
-        ppt = Presentation(self.path)
-        for slide in ppt.slides:
-            for shape in slide.shapes:
-                if hasattr(shape, 'text'):
-                    t = shape.text
-                    shape_ts.append(t)
+        try:
+            shape_ts = []
+            ppt = Presentation(self.path)
+        except exc.PackageNotFoundError:
+            shape_ts = []
+        else:
+            for slide in ppt.slides:
+                for shape in slide.shapes:
+                    if hasattr(shape, 'text'):
+                        t = shape.text
+                        shape_ts.append(t)
         text = ' '.join(shape_ts)
         text = text.replace("'", "‘")
         return text
@@ -165,6 +207,7 @@ class PPTText:
 
         pptapp = Dispatch("PowerPoint.Application")
         ppt = pptapp.Presentations.Open(self.path, WithWindow=False)
+        # ToDo: 加密的不报错，进程不动。raise一个异常。
         texts = []
         slide_count = ppt.Slides.Count
         for i in range(1, slide_count + 1):

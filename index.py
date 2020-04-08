@@ -212,6 +212,8 @@ def get_text(contents, user_extensions):
     # ToDo: 文本过滤器
     scripts = ['.py', '.r', '.cpp']
     for i in contents:
+        start_time = time.time()
+        print(i['Path'])
         ext = os.path.splitext(i['Path'])[-1]
         # Extract text
         if ext == '.txt' or ext == '.md' or ext == '.yml':
@@ -223,11 +225,11 @@ def get_text(contents, user_extensions):
         if ext == '.csv':
             text = extracttext.TXTText(i['Path']).csvtext()
             i['Text'] = text
-            extracttext.TXTText.rm_txt_files()
+            # extracttext.TXTText.rm_txt_files()
         if ext == '.xls' or ext == '.xlsx' or ext == '.xlsm':
             text = extracttext.TXTText(i['Path']).exceltext()
             i['Text'] = text
-            extracttext.TXTText.rm_txt_files()
+            # extracttext.TXTText.rm_txt_files()
         if ext == '.docx':
             text = extracttext.WordText(i['Path']).docxtext()
             i['Text'] = text
@@ -260,9 +262,9 @@ def get_text(contents, user_extensions):
             else:
                 text = extracttext.PDFText(i['Path']).scanpdftext()
                 i['Text'] = text
-                extracttext.PDFText.rm_spdf()
+                # extracttext.PDFText.rm_spdf()
         if ext == '.tar' or ext == '.rar' or ext == '.zip' or ext == '.7z':
-            uncompress.uncompress(file_path=i['Path'], 
+            uncompress.uncompress(file_path=i['Path'],
                                   user_extensions=user_extensions)
             uncompress.recursive(user_extensions=user_extensions)
             uncompress_info = get_uncompress_text()
@@ -275,6 +277,10 @@ def get_text(contents, user_extensions):
                           'Text': ui['Text']}
                 all_information.append(u_info)
             uncompress.rm_unzip_files()
+        end_time = time.time()
+        exec_time = end_time - start_time
+        print(exec_time)
+        print('\n')
     return all_information
 
 
@@ -333,7 +339,7 @@ def renew_index(user_dirs, user_extensions, index_name):
 
 if __name__ == "__main__":
     information = indexing(
-        user_dirs=["D:\\new_text"],
-        user_extensions=['.doc', '.docm'],
+        user_dirs=["D:\\othercode"],
+        user_extensions=['.zip', '.xlsx'],
         index_name="test")
     print(information)

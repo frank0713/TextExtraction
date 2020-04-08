@@ -33,11 +33,11 @@ def uncompress(file_path, user_extensions):
     """
 
     # ToDo: 更改7z路径，设为安装路径
-    # ToDo: 有密码，跳出
+    initial()
     for suffix in user_extensions:
         ext = "*" + suffix
         # os.system("D:\\textgps\\7z.exe x " + file_path + " " + ext + " -oC:\\temp_zip")
-        subprocess.call(["D:\\textgps\\7z.exe", "x", file_path, ext, "-y", "-oC:\\temp_zip"])
+        subprocess.call(["D:\\textgps\\7z.exe", "x", file_path, ext, "-y", "-p1", "-oC:\\temp_zip"])
 
 
 def recursive(user_extensions):
