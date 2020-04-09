@@ -2,31 +2,38 @@
 # @version: python 3.7.4
 # @author: frank0713
 
-# ToDo: 解编码问题
+# ToDo: encode & decode
+# ToDo: handle exceptions
 
 import os
 from chardet import detect
+# office
 from win32com.client import Dispatch
 from win32com.client import DispatchEx
 from docx import Document
-from docx.opc import exceptions
-from pptx import exc
 from pptx import Presentation
 import pandas as pd
+# office error
+from docx.opc import exceptions
+from pptx import exc
 from xlrd.biffh import XLRDError
+# scan pdf
 from PIL import Image
 import pytesseract
+# doc pdf
 from pdf2image import convert_from_path
 from pdfminer.pdfparser import PDFParser, PDFDocument
 from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
 from pdfminer.converter import PDFPageAggregator
 from pdfminer.layout import LTTextBoxHorizontal, LAParams
-from xml.etree.ElementTree import ElementTree
+# markup
+from xml.etree.ElementTree import ElementTree, ParseError
 from bs4 import BeautifulSoup
+from tex2py import tex2py
+# odf
 from odf.opendocument import load as odfload
 from odf import text as odftext
 from odf import teletype
-from tex2py import tex2py
 
 
 class TXTText:
@@ -52,7 +59,7 @@ class TXTText:
                 code = detect(unicode_text)['encoding']  # detect code type
                 text = unicode_text.decode(encoding=code)
                 text = text.replace("'", "‘")
-        except TypeError:
+        except TypeError:  # decode error or empty file(cannot detect code type)
             text = ''
         return text
 
@@ -65,9 +72,10 @@ class TXTText:
             with open(file, 'rb') as f:
                 unicode_text = f.read()
                 code = detect(unicode_text)['encoding']  # detect code type
+                print(code)
                 text = unicode_text.decode(encoding=code)
                 text = text.replace("'", "‘")
-        except TypeError:
+        except TypeError:  # decode error or empty file(cannot detect code type)
             text = ''
         return text
 
@@ -85,6 +93,7 @@ class TXTText:
             df.to_csv("C:\\temp\\temp.txt", header=None, sep=' ', index=False)
             text = self.ctxttext(file="C:\\temp\\temp.txt")
         except (pd.errors.EmptyDataError, UnicodeDecodeError):
+            # empty .csv(also: locked file) or decode error
             text = ''
         return text
 
@@ -102,7 +111,7 @@ class TXTText:
                 os.makedirs(directory)
             df.to_csv("C:\\temp\\temp.txt", header=None, sep=' ', index=False)
             text = self.ctxttext(file="C:\\temp\\temp.txt")
-        except XLRDError:
+        except XLRDError:  # empty or locked file
             text = ''
         return text
 
@@ -110,7 +119,8 @@ class TXTText:
     def rm_txt_files():
         """Remove the temporal .txt files at the end."""
 
-        os.remove("C:\\temp\\temp.txt")
+        if os.path.exists("C:\\temp\\temp.txt"):
+            os.remove("C:\\temp\\temp.txt")
 
 
 class WordText:
@@ -132,6 +142,7 @@ class WordText:
         try:
             doc = Document(self.path)
         except exceptions.PackageNotFoundError:
+            # cannot open file: locked file, empty file...
             text = ''
         else:
             # main body text
@@ -160,7 +171,7 @@ class WordText:
         wordapp = DispatchEx("Word.Application")
         doc = wordapp.Documents.Open(self.path)
         texts = []
-        # ToDo: 加密的不报错，raise一个来处理
+        # ToDo: 加密的不报错，弹窗输密码。raise一个来处理?
         for para in doc.paragraphs:
             t = para.Range.Text
             texts.append(t)
@@ -191,6 +202,7 @@ class PPTText:
             shape_ts = []
             ppt = Presentation(self.path)
         except exc.PackageNotFoundError:
+            # cannot open file: locked or empty file
             shape_ts = []
         else:
             for slide in ppt.slides:
@@ -207,7 +219,7 @@ class PPTText:
 
         pptapp = Dispatch("PowerPoint.Application")
         ppt = pptapp.Presentations.Open(self.path, WithWindow=False)
-        # ToDo: 加密的不报错，进程不动。raise一个异常。
+        # ToDo: 加密的不报错，进程不动。raise一个异常？
         texts = []
         slide_count = ppt.Slides.Count
         for i in range(1, slide_count + 1):
@@ -258,36 +270,67 @@ class MarkupText:
     def xmltext(self):
         """Extract text from .xml files."""
 
-        tree = ElementTree(file=self.path)
-        root = tree.getroot()
-        texts = []
-        for child in root.iter():
-            t = child.text
-            texts.append(t)
-        text = ' '.join(texts)
-        text = text.replace("'", "‘")
+        with open(self.path, 'rb') as dxml:
+            unicode_text = dxml.read()
+            code = detect(unicode_text)['encoding']
+            print(code)
+            if code == "None":  # empty file or cannot detect code typy
+                text = ''
+            else:
+                try:
+                    with open(file=self.path, encoding=code) as xf:
+                        tree = ElementTree(file=xf)
+                        root = tree.getroot()
+                        texts = []
+                        for child in root.iter():
+                            t = child.text
+                            texts.append(t)
+                        text = ' '.join(texts)
+                        text = text.replace("'", "‘")
+                except ParseError:  # wrong code or others...
+                    text = ''
         return text
 
     def htmltext(self):
         """Extract text from .html files."""
 
-        with open(self.path, 'r', encoding='utf-8') as hf:
-            html = BeautifulSoup(hf, "html.parser")
-            text = html.body.get_text()
-            text = text.replace("'", "‘")
+        with open(self.path, 'rb') as dhf:
+            unicode_text = dhf.read()
+            code = detect(unicode_text)['encoding']
+            # print(code)
+            if code == "None":  # empty file or connot detect code type
+                text = ''
+            else:
+                try:
+                    with open(self.path, 'r', encoding=code) as hf:
+                        html = BeautifulSoup(hf, "html.parser")
+                        text = html.body.get_text()
+                        text = text.replace("'", "‘")
+                except AttributeError:  # wrong code or others...
+                    text = ''
         return text
     
     def textext(self):
         """Extract text from .tex files."""
 
-        with open(self.path, encoding='utf-8') as tf:
-            toc = tex2py(tf.read())
-        text = []
-        for i in toc.descendants:
-            if isinstance(i, str):
-                text.append(i)
-        text = ' '.join(text)
-        text = text.replace("'", "‘")
+        with open(self.path, 'rb') as dtf:
+            unicode_text = dtf.read()
+            code = detect(unicode_text)['encoding']
+            print(code)
+            if code == "None":  # empty file or cannot detect code type
+                text = ''
+            else:
+                try:
+                    with open(self.path, 'r', encoding=code) as tf:
+                        toc = tex2py(tf.read())
+                        text = []
+                        for i in toc.descendants:
+                            if isinstance(i, str):
+                                text.append(i)
+                        text = ' '.join(text)
+                        text = text.replace("'", "‘")
+                except UnicodeDecodeError:  # wrong code type
+                    text = ''
         return text
     
 
