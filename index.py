@@ -70,7 +70,8 @@ def get_uncompress_text():
     uncompress_info = []
     # ToDo: 文本过滤器
     scripts = ['.py', '.r', '.cpp']
-    for root, dirs, files in os.walk("C:\\temp_zip"):
+    zip_path = uncompress.initial()
+    for root, dirs, files in os.walk(zip_path):
         for f in files:
             ext = os.path.splitext(f)[1]
             p = os.path.join(root, f)
@@ -146,8 +147,11 @@ def init_index(index_name):
 
     # ToDo: 修改路径。用户创建索引名时就创建。
     # 轮换存三个扫描结果的文档，便于更新时对照。定期更新或手动更新索引，就覆写最早修改时间的
-    directory = os.path.join("C:\\temp_index", str(index_name))
-    os.makedirs(directory)
+    user_main_path = os.path.expanduser('~')
+    index_dir = user_main_path + '\\Appdata\\Local\\Temp\\Textgps\\index'
+    directory = os.path.join(index_dir, str(index_name))
+    if not os.path.exists(directory):
+        os.makedirs(directory)
     num = 1
     for i in range(3):
         index = index_name + str(num) + ".txt"
@@ -155,6 +159,7 @@ def init_index(index_name):
         with open(index_path, "w") as f:
             f.write("")
         num = num + 1
+    return directory
 
 
 def walk_file(user_dirs, user_extensions, index_name):
@@ -188,7 +193,7 @@ def walk_file(user_dirs, user_extensions, index_name):
                             'Size': size, 'Text': ''}
                     contents.append(info)
     # 轮换存三个扫描结果的文档，便于更新时对照。定期更新或手动更新索引，就覆写最早修改时间的
-    pathname = os.path.join("C:\\temp_index", str(index_name))
+    pathname = init_index(index_name)
     # 覆写最早修改的一个文档
     rewrite_early(index_dir=pathname, contents=contents)
     return contents
@@ -225,11 +230,9 @@ def get_text(contents, user_extensions):
         if ext == '.csv':
             text = extracttext.TXTText(i['Path']).csvtext()
             i['Text'] = text
-            # extracttext.TXTText.rm_txt_files()
         if ext == '.xls' or ext == '.xlsx' or ext == '.xlsm':
             text = extracttext.TXTText(i['Path']).exceltext()
             i['Text'] = text
-            # extracttext.TXTText.rm_txt_files()
         if ext == '.docx':
             text = extracttext.WordText(i['Path']).docxtext()
             i['Text'] = text
@@ -262,7 +265,6 @@ def get_text(contents, user_extensions):
             else:
                 text = extracttext.PDFText(i['Path']).scanpdftext()
                 i['Text'] = text
-                # extracttext.PDFText.rm_spdf()
         if ext == '.tar' or ext == '.rar' or ext == '.zip' or ext == '.7z':
             uncompress.uncompress(file_path=i['Path'],
                                   user_extensions=user_extensions)
@@ -299,12 +301,15 @@ def indexing(user_dirs, user_extensions, index_name):
     original text should be changed to sign "‘".
     """
 
-    directory = os.path.join("C:\\temp_index", index_name)
-    if not os.path.exists(directory):
-        init_index(index_name)
+    init_index(index_name)
     contents = walk_file(user_dirs, user_extensions, index_name)
     index_information = get_text(contents=contents,
                                  user_extensions=user_extensions)
+    # remove all the temporal files
+    extracttext.TXTText.rm_txt_files()  # remove .csv/excel converted files
+    extracttext.PDFText.rm_pdf()  # remove scan-pdf/doc-pdf temporal files
+    # uncompressed temporal files would be removed at the end of running
+    # function get_uncompressed_text() everytime.
     return index_information
 
 
@@ -327,7 +332,7 @@ def renew_index(user_dirs, user_extensions, index_name):
     added to the current index.
     """
 
-    directory = os.path.join("C:\\temp_index" + index_name)
+    directory = init_index(index_name)
     last_index = read_new(directory)
     newest_index = walk_file(user_dirs, user_extensions, index_name)
     # compare the differences
@@ -339,7 +344,6 @@ def renew_index(user_dirs, user_extensions, index_name):
 
 if __name__ == "__main__":
     information = indexing(
-        user_dirs=["D:\\othercode"],
-        user_extensions=['.zip', '.xlsx'],
+        user_dirs=["D:\\new_text"],
+        user_extensions=['.pdf'],
         index_name="test")
-    print(information)

@@ -4,11 +4,10 @@
 
 
 import os
-import subprocess
-from shutil import rmtree
+from subprocess import call
 
 
-# 调用7z.exe
+# use 7z.exe
 
 
 def initial():
@@ -17,15 +16,18 @@ def initial():
     """
 
     # ToDo: 修改路径
-    directory = "C:\\temp_zip"
+    # 暂使用用户名主路径
+    user_main_path = os.path.expanduser('~')
+    directory = user_main_path + '\\Appdata\\Local\\Temp\\Textgps\\temp_zip'
     if not os.path.exists(directory):
         os.makedirs(directory)
+    return directory
 
 
 def uncompress(file_path, user_extensions):
     """
     The core function to uncompress a file, using 7zip. It can only uncompress
-    the selected format files.
+    the selected formats.
 
     :param file_path: A string. An absolute path.
     :param user_extensions:  A list. User's selected formats for indexing. e.g.
@@ -33,11 +35,12 @@ def uncompress(file_path, user_extensions):
     """
 
     # ToDo: 更改7z路径，设为安装路径
-    initial()
+    out_dir = "-o" + initial()
     for suffix in user_extensions:
         ext = "*" + suffix
         # os.system("D:\\textgps\\7z.exe x " + file_path + " " + ext + " -oC:\\temp_zip")
-        subprocess.call(["D:\\textgps\\7z.exe", "x", file_path, ext, "-y", "-p1", "-oC:\\temp_zip"])
+        call(["D:\\textgps\\7z.exe", "x", file_path, ext, "-y", "-p1", out_dir])
+        # app_path, extract mode, file_path, extension, all yes, password=1, output_path
 
 
 def recursive(user_extensions):
@@ -48,11 +51,13 @@ def recursive(user_extensions):
     [".txt", ".xlsx"]
     """
 
+    # Add other formats, if necessary
     zip_format = ['.tar', '.rar', '.zip', '.7z']
     intersection = [x for x in zip_format if x in user_extensions]
-    for f in os.listdir("C:\\temp_zip"):
+    zip_path = initial()
+    for f in os.listdir(zip_path):
         ext = os.path.splitext(f)[-1]
-        f_path = os.path.join("C:\\temp_zip", f)
+        f_path = os.path.join(zip_path, f)
         if ext in intersection:
             uncompress(file_path=f_path, user_extensions=user_extensions)
             os.remove(f_path)
@@ -63,4 +68,7 @@ def rm_unzip_files():
     Remove the temporal uncompressed files at the end.
     """
 
-    rmtree("C:\\temp_zip")
+    directory = initial()
+    if os.path.exists(directory):
+        for f in os.listdir(directory):
+            os.remove(f)
