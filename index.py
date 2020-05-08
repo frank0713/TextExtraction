@@ -21,10 +21,11 @@ def rewrite_early(index_dir, contents):
     """
     Rewrite the earliest modified file. Save the indexing files'information, for
     comparing when renew the index.
+
     :param index_dir: A string. Directory - storing the temporal indexing
-    files'information.
+           files'information.
     :param contents: A list, consists of dictionaries. Acturally, It is the
-    result returned by Function walk_file().
+           result returned by Function walk_file().
     """
 
     all_files = os.listdir(index_dir)
@@ -40,11 +41,12 @@ def read_new(index_dir):
     """
     Read the lastest modified file. Read the indexing files' information for
     extracting text.
+
     :param index_dir: A string. Directory - storing the temporal indexing
-    files'information.
-    :return: A list, consists of dictionaries. Acturally, It is the
-    result returned by Function walk_file() and the contents writen by Function
-    rewrite_early().
+           files'information.
+    :return: A list, consists of dictionaries. Acturally, It is the result
+             returned by Function walk_file() and the contents writen by Function
+             rewrite_early().
     """
 
     all_files = os.listdir(index_dir)
@@ -63,8 +65,8 @@ def get_uncompress_text():
     """
     Extract the text and zipped files' name.
 
-    :return: uncompress_info: A list, consists of dictionaries. For each
-    dictionary, the Keys:'Name':file name with format; 'Text': extracted text.
+    :return: uncompress_info: A list, consists of dictionaries. For each dictionary,
+             the Keys:'Name':file name with format; 'Text': extracted text.
     """
 
     uncompress_info = []
@@ -87,6 +89,10 @@ def get_uncompress_text():
                 uncompress_info.append(info)
             if ext == '.csv':
                 text = extracttext.TXTText(p).csvtext()
+                info = {'Name': name, 'Text': text}
+                uncompress_info.append(info)
+            if ext == '.tsv':
+                text = extracttext.TXTText(p).tsvtext()
                 info = {'Name': name, 'Text': text}
                 uncompress_info.append(info)
             if ext == '.xls' or ext == '.xlsx' or ext == '.xlsm':
@@ -117,12 +123,36 @@ def get_uncompress_text():
                 text = extracttext.MarkupText(p).xmltext()
                 info = {'Name': name, 'Text': text}
                 uncompress_info.append(info)
-            if ext == '.html':
+            if ext == '.html' or ext == '.htm':
                 text = extracttext.MarkupText(p).htmltext()
                 info = {'Name': name, 'Text': text}
                 uncompress_info.append(info)
             if ext == '.tex':
                 text = extracttext.MarkupText(p).textext()
+                info = {'Name': name, 'Text': text}
+                uncompress_info.append(info)
+            if ext == '.chm':
+                text = extracttext.MarkupText(p).chmtext()
+                info = {'Name': name, 'Text': text}
+                uncompress_info.append(info)
+            if ext == '.eml':
+                text = extracttext.MailText(p).emltext()
+                info = {'Name': name, 'Text': text}
+                uncompress_info.append(info)
+            if ext == '.msg':
+                text = extracttext.MailText(p).msgtext()
+                info = {'Name': name, 'Text': text}
+                uncompress_info.append(info)
+            if ext == '.azw3':
+                text = extracttext.EbookText(p).azw3text()
+                info = {'Name': name, 'Text': text}
+                uncompress_info.append(info)
+            if ext == '.mobi' or ext == '.azw':
+                text = extracttext.EbookText(p).mobitext()
+                info = {'Name': name, 'Text': text}
+                uncompress_info.append(info)
+            if ext == '.epub':
+                text = extracttext.EbookText(p).epubtext()
                 info = {'Name': name, 'Text': text}
                 uncompress_info.append(info)
             if ext == '.pdf':
@@ -142,6 +172,7 @@ def init_index(index_name):
     """
     Initialize some files for storing the results retured by Function
     walk_file().
+
     :param index_name: A str. The name of current index setted by user.
     """
 
@@ -166,15 +197,16 @@ def walk_file(user_dirs, user_extensions, index_name):
     """
     Walk through the selected file_dirs and get the selected format
     files’info as a dictionary(Key:Value).
+
     :param user_dirs: A list. User's selected directories for scanning. e.g.
-    ["C:/text", "D:/Programs"]
+           ["C:/text", "D:/Programs"]
     :param user_extensions: A list. User's selected formats for indexing. e.g.
-    [".txt", ".xlsx"]
+           [".txt", ".xlsx"]
     :param index_name: A str. The name of current index setted by user.
-    :return: A list, consists of dictionaries. For each dictionary, the
-    Keys:'Name':file name; 'Extension': file format; 'Ctime': created time;
-    'Mtime': last modified time; 'Path': absolute path of file; 'Size': the
-    size of file(Unit:Mb); 'Text': extracted text(empty now).
+    :return: A list, consists of dictionaries. For each dictionary, the Keys:
+             'Name':file name; 'Extension': file format; 'Ctime': created time;
+             'Mtime': last modified time; 'Path': absolute path of file;
+             'Size': the size of file(Unit:Mb); 'Text': extracted text(empty now).
     """
 
     contents = []
@@ -202,15 +234,16 @@ def walk_file(user_dirs, user_extensions, index_name):
 def get_text(contents, user_extensions):
     """
     Extract the text from selected directories and formats.
+
     :param contents: A list, consists of dictionaries. Acturally, It is the
-    result returned by Function walk_file().
+           result returned by Function walk_file().
     :param user_extensions: A list. User's selected formats for indexing. e.g.
-    [".txt", ".xlsx"]
+           [".txt", ".xlsx"]
     :return: A list, consists of dictionaries. For each dictionary, the
-    Keys:'Name':file name; 'Extension': file format; 'Ctime': created time;
-    'Mtime': last modified time; 'Path': absolute path of file; 'Size': the
-    size of file(Unit:Mb); 'Text': extracted text. Specially, the sign "'" in
-    original text should be changed to sign "‘".
+             Keys:'Name':file name; 'Extension': file format; 'Ctime': created time;
+             'Mtime': last modified time; 'Path': absolute path of file;
+             'Size': the size of file(Unit:Mb); 'Text': extracted text.
+             Specially, the sign "'" in original text should be changed to sign "‘".
     """
 
     all_information = contents
@@ -229,6 +262,9 @@ def get_text(contents, user_extensions):
             i['Text'] = text
         if ext == '.csv':
             text = extracttext.TXTText(i['Path']).csvtext()
+            i['Text'] = text
+        if ext == '.tsv':
+            text = extracttext.TXTText(i['Path']).tsvtext()
             i['Text'] = text
         if ext == '.xls' or ext == '.xlsx' or ext == '.xlsm':
             text = extracttext.TXTText(i['Path']).exceltext()
@@ -251,11 +287,29 @@ def get_text(contents, user_extensions):
         if ext == '.xml':
             text = extracttext.MarkupText(i['Path']).xmltext()
             i['Text'] = text
-        if ext == '.html':
+        if ext == '.html' or ext == '.htm':
             text = extracttext.MarkupText(i['Path']).htmltext()
             i['Text'] = text
         if ext == '.tex':
             text = extracttext.MarkupText(i['Path']).textext()
+            i['Text'] = text
+        if ext == '.chm':
+            text = extracttext.MarkupText(i['Path']).chmtext()
+            i['Text'] = text
+        if ext == '.eml':
+            text = extracttext.MailText(i['Path']).emltext()
+            i['Text'] = text
+        if ext == '.msg':
+            text = extracttext.MailText(i['Path']).msgtext()
+            i['Text'] = text
+        if ext == '.azw3':
+            text = extracttext.EbookText(i['Path']).azw3text()
+            i['Text'] = text
+        if ext == '.mobi' or ext == '.azw':
+            text = extracttext.EbookText(i['Path']).mobitext()
+            i['Text'] = text
+        if ext == '.epub':
+            text = extracttext.EbookText(i['Path']).epubtext()
             i['Text'] = text
         if ext == '.pdf':
             text = extracttext.PDFText(i['Path']).docpdftext()
@@ -289,16 +343,17 @@ def get_text(contents, user_extensions):
 def indexing(user_dirs, user_extensions, index_name):
     """
     The Main Function for indexing.
+
     :param user_dirs: A list. User's selected directories for scanning. e.g.
-    ["C:/text", "D:/Programs"]
+           ["C:/text", "D:/Programs"]
     :param user_extensions: A list. User's selected formats for indexing. e.g.
-    [".txt", ".xlsx"]
+           [".txt", ".xlsx"]
     :param index_name: A str. The name of current index setted by user.
     :return: A list, consists of dictionaries. For each dictionary, the
-    Keys:'Name':file name; 'Extension': file format; 'Ctime': created time;
-    'Mtime': last modified time; 'Path': absolute path of file; 'Size': the
-    size of file(Unit:Mb); 'Text': extracted text. Specially, the sign "'" in
-    original text should be changed to sign "‘".
+             Keys:'Name':file name; 'Extension': file format; 'Ctime': created time;
+             'Mtime': last modified time; 'Path': absolute path of file; 'Size':
+             the size of file(Unit:Mb); 'Text': extracted text. Specially,
+             the sign "'" in original text should be changed to sign "‘".
     """
 
     init_index(index_name)
@@ -319,17 +374,18 @@ def renew_index(user_dirs, user_extensions, index_name):
     between new and old version files' information[returned result of Function
     walk_file()], remove the omitted ones, extract new texts, including added
     files or modified files.
+
     :param user_dirs: A list. User's selected directories for scanning. e.g.
-    ["C:/text", "D:/Programs"]
+           ["C:/text", "D:/Programs"]
     :param user_extensions: A list. User's selected formats for indexing. e.g.
-    [".txt", ".xlsx"]
+           [".txt", ".xlsx"]
     :param index_name: A str. The name of current index setted by user.
-    :return:removes: A list, consists of dictionaries. Its form is alike the
-    returned result of Function walk_file()[empty text]. It contains the items
-    that should be removed out from the current index.
-            add_information: A list, consists of dictionaries. It is the
-    returned result of Function get_text()[with extracted text]. It would be
-    added to the current index.
+    :return: removes: A list, consists of dictionaries. Its form is alike the
+            returned result of Function walk_file()[empty text]. It contains the
+            items that should be removed out from the current index.
+            add_information: A list, consists of dictionaries. It is the returned
+            result of Function get_text()[with extracted text]. It would be added
+            to the current index.
     """
 
     directory = init_index(index_name)
@@ -340,10 +396,11 @@ def renew_index(user_dirs, user_extensions, index_name):
     removes = [y for y in last_index if y not in newest_index]
     add_information = get_text(contents=adds, user_extensions=user_extensions)
     return removes, add_information
+    # ToDo: Deal with the return results
 
 
 if __name__ == "__main__":
     information = indexing(
         user_dirs=["D:\\new_text"],
-        user_extensions=['.pdf'],
+        user_extensions=['.rtf'],
         index_name="test")

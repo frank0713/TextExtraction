@@ -4,17 +4,18 @@
 
 # ToDo: encode & decode
 # ToDo: handle exceptions
+# ToDo: 修改初始化路径，暂用用户主文件夹
 
 import os
-# import time
 from subprocess import call
+from shutil import rmtree
 from chardet import detect
 # **MS Office**
 from comtypes.client import CreateObject  # .doc
 # from win32com.client import DispatchEx
 from docx import Document  # .docx
 from pptx import Presentation  # .pptx
-from pandas import read_csv, read_excel  # .csv/excel
+from pandas import read_csv, read_excel, read_table  # .csv/excel
 # **MS Office exceptions**
 from _ctypes import COMError  # .doc/.ppt
 from docx.opc import exceptions  # .docx
@@ -31,18 +32,26 @@ from pdf2image.exceptions import PDFPageCountError
 # from pdfplumber import open as pdfopen
 # from pdfminer.pdfdocument import PDFPasswordIncorrect
 # **Markup formats**
-from xml.etree.ElementTree import ElementTree, ParseError
-from bs4 import BeautifulSoup
-from tex2py import tex2py
+from xml.etree.ElementTree import ElementTree, ParseError  # xml
+from bs4 import BeautifulSoup  # html/htm
+from tex2py import tex2py  # tex
+# chm: use 7z uncompress to htm files, and extract
 # **ODF**
 from odf.opendocument import load as odfload
 from odf import text as odftext
 from odf import teletype
+# **email**
+from email.header import decode_header, make_header
+from email import message_from_file  # eml
+from extract_msg import Message  # msg
+# **ebook**
+from ebooklib import epub, ITEM_DOCUMENT
+# mobi/azw/azw3: use kindleunpack.py to unpack, and extract
 
 
 class TXTText:
     """
-    Extract text from general .txt file. 
+    Extract texts from general .txt file.
     
     It can also be used as a txt extractor for some other files, such as: 
     Markup language files(Markdown/Yaml); Code script files(C++/Python...etc.).
@@ -55,7 +64,7 @@ class TXTText:
         self.path = path
 
     def txttext(self):
-        """Extract text from general .txt files."""
+        """Extract texts from general .txt files."""
 
         try:
             with open(self.path, 'rb') as f:
@@ -69,7 +78,7 @@ class TXTText:
 
     @staticmethod
     def ctxttext(file):
-        """Extract text from converted temporal .txt file for other inner class
+        """Extract texts from converted temporal .txt file for other inner class
         methods."""
 
         try:
@@ -84,7 +93,7 @@ class TXTText:
         return text
 
     @staticmethod
-    def initialize_path():
+    def initialize_txt_path():
         """Initialize path for temporal converted .txt files."""
 
         user_main_path = os.path.expanduser('~')
@@ -94,15 +103,12 @@ class TXTText:
         return directory
 
     def csvtext(self):
-        """Extract text from .csv files.
-        
-        Use Pandas library to convert into .txt format."""
+        """Extract texts from .csv files. Use Pandas library to convert into .txt format."""
 
         try:
             df = read_csv(self.path, header=None)
-            # ToDo: 修改创建dir。另：初始化时创建
-            # 暂使用用户文件夹下路径
-            directory = self.initialize_path()
+            # ToDo: 修改创建dir。暂用用户主文件夹下路径
+            directory = self.initialize_txt_path()
             csv2txt_file = directory + '\\temp.txt'
             df.to_csv(csv2txt_file, header=None, sep=' ', index=False)
             text = self.ctxttext(file=csv2txt_file)
@@ -111,17 +117,31 @@ class TXTText:
             text = ''
         return text
 
+    def tsvtext(self):
+        """Extract texts from .tsv files. Use Pandas library to convert into .txt format."""
+
+        try:
+            df = read_table(self.path, header=None)
+            # ToDo: 修改创建dir。暂使用用户主文件夹下路径
+            directory = self.initialize_txt_path()
+            tsv2txt_file = directory + '\\temp.txt'
+            df.to_csv(tsv2txt_file, header=None, sep='\t', index=False)
+            text = self.ctxttext(file=tsv2txt_file)
+        except (EmptyDataError, UnicodeDecodeError):
+            # empty .tsv(also: locked file) or decode error
+            text = ''
+        return text
+
     def exceltext(self):
-        """Extract text from .xls/.xlsx/.xlsm files.
-        
+        """Extract texts from .xls/.xlsx/.xlsm files.
+
         Use Pandas library to convert the MS-Excel associated format files
         (including old version[.xls] or macro[.xlsm] ones) into .txt format."""
 
         try:
             df = read_excel(self.path, header=None)
-            # ToDo: 修改创建路径。另：初始化时创建
-            # 暂使用用户文件夹下路径
-            directory = self.initialize_path()
+            # ToDo: 修改创建路径。暂使用用户主文件夹下路径
+            directory = self.initialize_txt_path()
             excel2txt_file = directory + '\\.temp.txt'
             df.to_csv(excel2txt_file, header=None, sep=' ', index=False)
             text = self.ctxttext(file=excel2txt_file)
@@ -133,26 +153,26 @@ class TXTText:
     def rm_txt_files():
         """Remove the temporal .txt files at the end."""
 
-        txt_file = TXTText.initialize_path() + 'temp.txt'
+        txt_file = TXTText.initialize_txt_path() + 'temp.txt'
         if os.path.exists(txt_file):
             os.remove(txt_file)
 
 
 class WordText:
     """
-    Extract text from .docx/.doc/.docm/.rtf files.
+    Extract texts from .docx/.doc/.docm/.rtf files.
 
     For .docx files, use docx library.
 
     For old version MS-Word files(.doc), macro-Word files(.docm), or rich text
-    format files(.rtf), use win32com.client module.
+    format files(.rtf), use comtypes.client module.
     """
 
     def __init__(self, path):
         self.path = path
 
     def docxtext(self):
-        """Extract text from .docx files."""
+        """Extract texts from .docx files."""
 
         try:
             doc = Document(self.path)
@@ -181,11 +201,11 @@ class WordText:
         return text
 
     def doctext(self):
-        """Extract text from .doc/.docm/.rtf files, using win32com.client."""
+        """Extract texts from .doc/.docm/.rtf files, using comtypes.client."""
 
         try:
             wordapp = CreateObject("Word.Application")
-            doc = wordapp.Documents.Open(self.path, PasswordDocument='')
+            doc = wordapp.Documents.Open(self.path, PasswordDocument=' ')
         except COMError:  # locked file
             text = ''
         else:
@@ -202,19 +222,19 @@ class WordText:
 
 class PPTText:
     """
-    Extract text from .pptx/.ppt/.pptm files.
+    Extract texts from .pptx/.ppt/.pptm files.
 
     For .pptx files, use pptx library.
 
     For old version MS-PowerPoint files(.ppt) or macro-PowerPoint files(.pptm), 
-    use win32com.client module.
+    use comtypes.client module.
     """
 
     def __init__(self, path):
         self.path = path
 
     def pptxtext(self):
-        """Extract text from .pptx files."""
+        """Extract texts from .pptx files."""
 
         try:
             shape_ts = []
@@ -233,7 +253,7 @@ class PPTText:
         return text
 
     def ppttext(self):
-        """Extract text from .ppt/.pptm files, using win32com.client module."""
+        """Extract texts from .ppt/.pptm files, using comtypes.client module."""
 
         try:
             pptapp = CreateObject("PowerPoint.Application")
@@ -259,15 +279,13 @@ class PPTText:
 
 
 class ODFText:
-    """
-    Extract text from ODF files(.odt/.ods/.odp).
-    """
+    """Extract texts from ODF files(.odt/.ods/.odp)."""
 
     def __init__(self, path):
         self.path = path
 
     def odftext(self):
-        """Extract text from .odt/.ods/.odp files"""
+        """Extract texts from .odt/.ods/.odp files"""
 
         odf_file = odfload(self.path)
         odf_text = odf_file.getElementsByType(odftext.P)
@@ -281,17 +299,16 @@ class ODFText:
 
 class MarkupText:
     """
-    Extract text from markup format files(.xml/.html/.tex)
+    Extract texts from markup format files(.xml/.html/.tex/.chm)
 
-    For .md(markdown) or .yml(yaml) files, use TXT extractor(class TXTText) 
-    directly.
+    For .md(markdown) or .yml(yaml) files, use TXT extractor(class TXTText) directly.
     """
 
     def __init__(self, path):
         self.path = path
 
     def xmltext(self):
-        """Extract text from .xml files."""
+        """Extract texts from .xml files."""
 
         with open(self.path, 'rb') as dxml:
             unicode_text = dxml.read()
@@ -315,7 +332,7 @@ class MarkupText:
         return text
 
     def htmltext(self):
-        """Extract text from .html files."""
+        """Extract texts from .html files."""
 
         with open(self.path, 'rb') as dhf:
             unicode_text = dhf.read()
@@ -327,14 +344,14 @@ class MarkupText:
                 try:
                     with open(self.path, 'r', encoding=code) as hf:
                         html = BeautifulSoup(hf, "html.parser")
-                        text = html.body.get_text()
+                        text = html.get_text()
                         text = text.replace("'", "‘")
                 except AttributeError:  # wrong code or others...
                     text = ''
         return text
 
     def textext(self):
-        """Extract text from .tex files."""
+        """Extract texts from .tex files."""
 
         with open(self.path, 'rb') as dtf:
             unicode_text = dtf.read()
@@ -356,10 +373,72 @@ class MarkupText:
                     text = ''
         return text
 
+    @staticmethod
+    def initial_chm_path():
+        """
+        Initialize the path for temporal unzipped chm files.
+        """
+
+        user_main_path = os.path.expanduser('~')
+        chm_dir = user_main_path + '\\Appdata\\Local\\Temp\\Textgps\\temp_chm'
+        if not os.path.exists(chm_dir):
+            os.makedirs(chm_dir)
+        return chm_dir
+
+    def chmtext(self):
+        """
+        Uncompress the .chm file, and extract the texts from output .htm files.
+        """
+
+        # ToDo: 修改7zip路径
+        # ToDo: 修改初始化路径，暂用用户主文件夹
+        file_name = os.path.splitext(os.path.split(self.path)[-1])[0]
+        output_dir = os.path.join(self.initial_chm_path(), file_name)
+        output_path = '-o' + output_dir
+        sevenzip_path = "D:\\textgps\\7z.exe"
+        cmd = [sevenzip_path, 'x', self.path, '*.htm', '-y', output_path, '-r']
+        # 7zip path, extract mode, input file, uncompressed format, all yes,
+        # output path, recursively uncompress
+        call(cmd)
+        # extract texts from htm files
+        texts = []
+        for root, dirs, files in os.walk(output_dir):
+            for f in files:
+                f_path = os.path.join(root, f)
+                with open(f_path, 'rb') as dhf:
+                    unicode_text = dhf.read()
+                    code = detect(unicode_text)['encoding']
+                    # print(code)
+                    if code == "None":  # empty file or connot detect code type
+                        t = ''
+                        texts.append(t)
+                    else:
+                        try:
+                            with open(f_path, 'r', encoding=code) as hf:
+                                html = BeautifulSoup(hf, "html.parser")
+                                t = html.get_text()
+                                t = t.replace("'", "‘")
+                                texts.append(t)
+                        except AttributeError:  # wrong code or others...
+                            t = ''
+                            texts.append(t)
+        text = ' '.join(texts)
+        return text
+
+    def rm_chm(self):
+        """
+        Remove the temporal uncompressed chm files at the end.
+        """
+
+        file_name = os.path.splitext(os.path.split(self.path)[-1])[0]
+        output_dir = os.path.join(self.initial_chm_path(), file_name)
+        if os.path.exists(output_dir):
+            rmtree(output_dir)
+
 
 class PDFText:
     """
-    Extract text from .pdf files.
+    Extract texts from .pdf files.
 
     One type is document style, using xpdf to convert to .txt; the other is
     scanned type, which is converted to image and extracted by OCR(tesseract).
@@ -372,6 +451,7 @@ class PDFText:
     def initialize_dpdf_path():
         """Initialize path for temporal doc-pdf files."""
 
+        # ToDo: 修改初始化路径，暂用用户主文件夹
         user_main_path = os.path.expanduser('~')
         dpdf_dir = user_main_path + '\\Appdata\\Local\\Temp\\Textgps\\temp_dpdf'
         if not os.path.exists(dpdf_dir):
@@ -382,6 +462,7 @@ class PDFText:
     def initialize_spdf_path():
         """Initialize path for temporal scan-pdf files."""
 
+        # ToDo: 修改初始化路径，暂用用户主文件夹
         user_main_path = os.path.expanduser('~')
         spdf_dir = user_main_path + '\\Appdata\\Local\\Temp\\Textgps\\temp_spdf'
         if not os.path.exists(spdf_dir):
@@ -389,10 +470,9 @@ class PDFText:
         return spdf_dir
 
     def docpdftext(self):
-        """Extract text from document type PDF."""
+        """Extract texts from document type PDF."""
 
         # ToDo: 修改xpdf路径
-        # ToDo: 修改directory
         xpdf_path = 'D:\\xpdf\\pdftotext.exe'
         directory = self.initialize_dpdf_path()
         file_name = os.path.splitext(os.path.split(self.path)[-1])[0]
@@ -405,11 +485,11 @@ class PDFText:
         except FileNotFoundError:  # locked file cannot be converted, so it is not found
             text = ''
         return text
-    
-    def scanpdftext(self):
-        """Extract text from scanned PDF by OCR(tesseract)."""
 
-        # ToDo: 修改路径。另：初始化时创建
+    def scanpdftext(self):
+        """Extract texts from scanned PDF by OCR(tesseract)."""
+
+        # ToDo: 修改初始化路径，暂用用户主文件夹
         directory = self.initialize_spdf_path()
         texts = []
         try:
@@ -421,6 +501,9 @@ class PDFText:
                        fn, directory, '--tessdata-dir',
                        'd:\\programs\\tesseract\\tessdata', '-l', 'chi_sim+eng',
                        '--dpi', '300', '--oem', '1']
+                # app path, image path, output dir, tessdata path, language(in sequence),
+                # dpi value setting, OCR engine mode(1: Automatic page segmentation with OSD)
+                # Input "APP-PATH --help-extra" in cmd to get the details.
                 call(cmd)
                 out_txt = directory + '\\temp.txt'
                 with open(out_txt, 'r', encoding='utf-8') as f:
@@ -444,3 +527,255 @@ class PDFText:
         if os.path.exists(dpdf_path):
             for f in os.listdir(sdpf_path):
                 os.remove(f)
+
+
+class MailText:
+    """
+    Extract texts and some infomation from email files.
+    """
+
+    def __init__(self, path):
+        self.path = path
+
+    def emltext(self):
+        """
+        Extract texts and some information from .eml format email files, using builtin module: email.
+        """
+
+        texts = []
+        with open(self.path, 'r') as eml:
+            message = message_from_file(eml)
+        send = 'From: ' + message['From']
+        to = 'To: ' + message['To']
+        dt = 'DateTime: ' + message['Date']
+        try:
+            sub = make_header(decode_header(message['Subject']))
+            header = 'Subject: ' + str(sub)
+        except UnicodeDecodeError:  # wrong decode
+            header = ''
+        texts.append(send)
+        texts.append(to)
+        texts.append(dt)
+        texts.append(header)
+        # mail content
+        texts.append('Message: ')
+        try:
+            for part in message.walk():
+                if not part.is_multipart():
+                    text_type = part.get_content_subtype()
+                    msgs = part.get_payload(decode=True)
+                    code_type = part.get_content_charset()
+                    # 避免繁体中文解码错误
+                    if code_type == 'gb2312':
+                        code_type = 'gbk'
+                    if text_type == 'plain':
+                        try:
+                            tmail_text = msgs.decode(code_type)
+                        except (UnicodeDecodeError, AttributeError):
+                            # wrong decode or empty text
+                            tmail_text = ''
+                        texts.append(tmail_text)
+                    elif text_type == 'html':
+                        try:
+                            hmail = BeautifulSoup(msgs.decode(code_type),
+                                                  "html.parser")
+                            hmail_text = hmail.body.get_text()
+                        except (UnicodeDecodeError, AttributeError):
+                            # wrong decode or empty text
+                            hmail_text = ''
+                        texts.append(hmail_text)
+        except (UnicodeDecodeError, AttributeError):  # wrong decode or empty text
+            msgs = ''
+            texts.append(msgs)
+        text = ', '.join(texts)
+        text = text.replace("'", "‘")
+        return text
+
+    def msgtext(self):
+        """
+        Extract texts and some information from .msg format email files.
+        """
+
+        try:
+            mail = Message(self.path)
+        except (AttributeError, Exception):  # wrong decode or cannot parse...
+            text = ''
+        else:
+            if mail.sender is None:
+                send = 'From: '
+            else:
+                send = 'From: ' + mail.sender
+            if mail.to is None:
+                to = 'To: '
+            else:
+                to = 'To: ' + mail.to
+            if mail.date is None:
+                dt = 'DataTime: '
+            else:
+                dt = 'DateTime: ' + mail.date
+            if mail.subject is None:
+                sub = 'Subject: '
+            else:
+                sub = 'Subject: ' + mail.subject
+            if mail.body is None:
+                msgs = 'Message: '
+            else:
+                msgs = 'Message: ' + mail.body
+            text = send + ', ' + to + ', ' + dt + ', ' + sub + ', ' + msgs
+            text = text.replace("'", "‘")
+        return text
+
+
+class EbookText:
+    """
+    Extract texts from .epub/.mobi/.azw/.azw3 files.
+    """
+
+    def __init__(self, path):
+        self.path = path
+
+    def epubtext(self):
+        """
+        Extract texts from .epub files.
+        """
+
+        with open(self.path, 'rb') as f:
+            ebook = epub.read_epub(f)
+        texts = []
+        for doc in ebook.get_items_of_type(ITEM_DOCUMENT):
+            try:
+                body = doc.get_body_content().decode('utf-8')
+                body_parser = BeautifulSoup(body, 'html.parser')
+                try:
+                    t = body_parser.get_text()
+                except AttributeError:  # empty text
+                    t = ''
+                texts.append(t)
+            except UnicodeDecodeError:  # wrong decode
+                t = ''
+                texts.append(t)
+        text = ' '.join(texts)
+        text = text.replace("'", "‘")
+        return text
+
+    @staticmethod
+    def initial_mobi_path():
+        """
+        Initialize the path for temporal mobi files unpacked by kindleunpack.py
+        """
+
+        # ToDo: 修改初始化路径，暂用用户主文件夹
+        user_main_path = os.path.expanduser('~')
+        mobi_dir = user_main_path + '\\Appdata\\Local\\Temp\\Textgps\\temp_mobi'
+        if not os.path.exists(mobi_dir):
+            os.makedirs(mobi_dir)
+        return mobi_dir
+
+    @staticmethod
+    def initial_azw3_path():
+        """
+        Initialize the path for temporal azw files unpacked by kindleunpack.py
+        """
+
+        # ToDo: 修改初始化路径，暂用用户主文件夹
+        user_main_path = os.path.expanduser('~')
+        azw_dir = user_main_path + '\\Appdata\\Local\\Temp\\Textgps\\temp_azw3'
+        if not os.path.exists(azw_dir):
+            os.makedirs(azw_dir)
+        return azw_dir
+
+    def mobitext(self):
+        """
+        Extract texts from .mobi/azw files, using kindleunpack.py to uncompress the
+        mobi/azw file and extract texts from a html file.
+
+        Note: azw is different from azw3, azw and mobi formats are also called mobi7 or
+        earlier version mobi file. However, azw is commonly protected by DRM.
+        This function just extracts the texts from unencrypted azw file(without DRM),
+        it would not crack DRM.
+        """
+
+        # ToDo: 修改kindleunpack.py的路径
+        # ToDo: 修改临时文件路径，暂用用户主文件夹
+        directory = self.initial_mobi_path()
+        kindelunpack_path = 'd:\\ku\\lib\\kindleunpack.py'
+        in_dir = self.path
+        file_name = os.path.splitext(os.path.split(self.path)[-1])[0]
+        out_dir = os.path.join(directory, file_name)
+        # ToDo: python cmd支持
+        cmd = ['python', kindelunpack_path, '-d', in_dir, out_dir]
+        # python app, kindleunpack.py path, dump the file, input file, output file
+        call(cmd)
+        html_path = os.path.join(out_dir, 'mobi7/book.html')
+        try:
+            text = MarkupText(path=html_path).htmltext()
+        except FileNotFoundError:  # DRM file or cannot unpack properly...
+            text = ''
+        return text
+
+    def azw3text(self):
+        """
+        Extract texts from azw3 file, using kindleunpack.py to uncompress the azw3 file
+        and extract texts from an epub file.
+
+        Note: azw3 format is also called mobi8, commonly it is protected by DRM. This function
+        just extracts the texts from unencrypted azw3 file(without DRM) and it would not
+        crack DRM.
+        """
+
+        # ToDo: 修改kindleunpack.py的路径
+        # ToDo: 修改临时文件路径，暂用用户主文件夹
+        directory = self.initial_azw3_path()
+        kindelunpack_path = 'd:\\ku\\lib\\kindleunpack.py'
+        in_dir = self.path
+        file_name = os.path.splitext(os.path.split(self.path)[-1])[0]
+        out_dir = os.path.join(directory, file_name)
+        # ToDo: python cmd支持
+        cmd = ['python', kindelunpack_path, '-d', in_dir, out_dir]
+        # python app, kindleunpack.py path, dump the file, input file, output file
+        call(cmd)
+        epub_path = out_dir + '/mobi8/' + file_name + '.epub'
+        # extract texts from the same name epub file in epub_path
+        try:
+            with open(epub_path, 'rb') as f:
+                ebook = epub.read_epub(f)
+            texts = []
+            for doc in ebook.get_items_of_type(ITEM_DOCUMENT):
+                try:
+                    body = doc.get_body_content().decode('utf-8')
+                    body_parser = BeautifulSoup(body, 'html.parser')
+                    try:
+                        t = body_parser.get_text()
+                    except AttributeError:  # empty text
+                        t = ''
+                    texts.append(t)
+                except UnicodeDecodeError:  # wrong decode
+                    t = ''
+                    texts.append(t)
+            text = ' '.join(texts)
+            text = text.replace("'", "‘")
+        except FileNotFoundError:  # DRM file or unpack inproperly...
+            text = ''
+        return text
+
+    def rm_mobi(self):
+        """
+        Remove the temporal mobi unpacked files at the end.
+        """
+
+        out_dir = self.initial_mobi_path()
+        file_name = os.path.splitext(os.path.split(self.path)[-1])[0]
+        mobi_path = os.path.join(out_dir, file_name)
+        if os.path.exists(mobi_path):
+            rmtree(mobi_path)
+
+    def rm_azw3(self):
+        """
+        Remove the temporal azw3 unpacked files at the end.
+        """
+
+        out_dir = self.initial_azw3_path()
+        file_name = os.path.splitext(os.path.split(self.path)[-1])[0]
+        azw3_path = os.path.join(out_dir, file_name)
+        if os.path.exists(azw3_path):
+            rmtree(azw3_path)
